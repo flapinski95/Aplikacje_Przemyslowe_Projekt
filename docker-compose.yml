@@ -1,0 +1,33 @@
+version: '3.8' # Możesz to usunąć, jeśli wolisz nowszą składnię
+
+services:
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: book-lovers-db
+    environment:
+      POSTGRES_DB: bookdb
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: book-lovers-app
+    ports:
+      - "8090:8080"
+    depends_on:
+      - postgres-db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/bookdb
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: admin123
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_LOB_NON_CONTEXTUAL_CREATION:
+
+volumes:
+  db-data:

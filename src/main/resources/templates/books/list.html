@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: header}"></head>
+<body>
+
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container">
+    <h2 class="mb-4">Katalog Książek</h2>
+
+    <form action="/books" method="get" class="d-flex mb-4">
+        <input class="form-control me-2" type="search" name="query" th:value="${query}" placeholder="Szukaj (Tytuł, Autor, ISBN)...">
+        <button class="btn btn-outline-success" type="submit">Szukaj</button>
+        <a href="/books" class="btn btn-outline-secondary ms-2">Reset</a>
+    </form>
+
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        <div class="col" th:each="book : ${books}">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title" th:text="${book.title}">Tytuł Książki</h5>
+                    <h6 class="card-subtitle mb-2 text-muted" th:text="${book.author}">Autor</h6>
+                    <p class="card-text">
+                        ISBN: <span th:text="${book.isbn}">12345</span><br>
+                        Ocena: <strong class="text-warning" th:text="${book.averageRating}">0.0</strong> / 10
+                        (<span th:text="${book.reviewCount}">0</span> opinii)
+                    </p>
+                </div>
+                <div class="card-footer bg-transparent border-top-0">
+                    <a th:href="@{/books/{id}(id=${book.id})}" class="btn btn-primary w-100">Szczegóły</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div th:if="${books.empty}" class="alert alert-info mt-3">
+        Nie znaleziono książek spełniających kryteria.
+    </div>
+</div>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>
