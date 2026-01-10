@@ -9,6 +9,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -31,6 +32,8 @@ class AuthControllerTest {
         RegisterRequest req = new RegisterRequest();
         req.setUsername("new_user");
         req.setPassword("pass123");
+        req.setEmail("test@example.com");
+        req.setFullName("Test User");
 
         doNothing().when(authService).registerUser(any());
 
@@ -45,6 +48,8 @@ class AuthControllerTest {
         RegisterRequest req = new RegisterRequest();
         req.setUsername("new_user");
         req.setPassword("");
+        req.setEmail("test@example.com");
+        req.setFullName("Test User");
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

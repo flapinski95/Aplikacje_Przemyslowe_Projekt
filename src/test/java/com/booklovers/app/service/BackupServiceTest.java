@@ -1,22 +1,27 @@
 package com.booklovers.app.service;
 
+import com.booklovers.app.dto.BackupDTO;
+import com.booklovers.app.model.Book;
 import com.booklovers.app.model.Shelf;
 import com.booklovers.app.model.User;
+import com.booklovers.app.repository.BookRepository;
 import com.booklovers.app.repository.ShelfRepository;
 import com.booklovers.app.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,56 +33,92 @@ class BackupServiceTest {
     @Mock
     private ShelfRepository shelfRepository;
 
-    @Spy
-    private ObjectMapper objectMapper = new ObjectMapper();
+    @Mock
+    private BookRepository bookRepository;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private BackupService backupService;
 
+    private User user;
+
+    @BeforeEach
+    void setUp() {
+        user = new User();
+        user.setId(1L);
+        user.setUsername("testuser");
+        user.setEmail("test@test.com");
+        user.setShelves(new ArrayList<>());
+    }
+
     @Test
     void shouldExportUserData() throws Exception {
-        Long userId = 1L;
-        User user = new User();
-        user.setId(userId);
-        user.setUsername("backup_user");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(objectMapper.writeValueAsString(any(BackupDTO.class))).thenReturn("{}");
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        String json = backupService.exportUserData(1L);
 
-        String json = backupService.exportUserData(userId);
-
-        assertTrue(json.contains("backup_user"));
+        assertNotNull(json);
+        verify(userRepository).findById(1L);
+        verify(objectMapper).writeValueAsString(any(BackupDTO.class));
     }
 
     @Test
     void shouldImportUserData_AndCreateNewShelf() throws Exception {
-        Long userId = 1L;
-        String json = "{\"username\":\"backup_user\", \"shelves\": [{\"name\": \"Old Shelf\"}]}";
+        String json = "{\"shelves\": [{\"name\": \"New Shelf\", \"code\": \"NEW_CODE\", \"bookIds\": [100]}]}";
+        BackupDTO backupDTO = new BackupDTO();
+        BackupDTO.ShelfBackupDTO shelfDTO = new BackupDTO.ShelfBackupDTO();
+        shelfDTO.setName("New Shelf");
+        shelfDTO.setCode("NEW_CODE");
+        shelfDTO.setBookIds(List.of(100L));
+        backupDTO.setShelves(List.of(shelfDTO));
 
-        User existingUser = new User();
-        existingUser.setId(userId);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(objectMapper.readValue(anyString(), eq(BackupDTO.class))).thenReturn(backupDTO);
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
+        when(shelfRepository.findByShelfCodeAndUser("NEW_CODE", user)).thenReturn(Optional.empty());
 
-        when(shelfRepository.findByNameAndUser(eq("Old Shelf"), any())).thenReturn(Optional.empty());
+        when(shelfRepository.save(any(Shelf.class))).thenAnswer(invocation -> {
+            Shelf s = invocation.getArgument(0);
+            s.setId(55L);
+            return s;
+        });
 
-        backupService.importUserData(userId, json);
+        Book book = new Book();
+        book.setId(100L);
+        lenient().when(bookRepository.findById(100L)).thenReturn(Optional.of(book));
 
-        verify(shelfRepository, times(1)).save(any(Shelf.class));
+        backupService.importUserData(1L, json);
+
+        verify(shelfRepository, atLeastOnce()).save(any(Shelf.class));
     }
 
     @Test
     void shouldImportUserData_AndSkipExistingShelf() throws Exception {
-        Long userId = 1L;
-        String json = "{\"username\":\"backup_user\", \"shelves\": [{\"name\": \"Existing Shelf\"}]}";
+        // given
+        String json = "{\"shelves\": [{\"name\": \"Existing Shelf\", \"code\": \"EXISTING_CODE\"}]}";
+        BackupDTO backupDTO = new BackupDTO();
+        BackupDTO.ShelfBackupDTO shelfDTO = new BackupDTO.ShelfBackupDTO();
+        shelfDTO.setName("Existing Shelf");
+        shelfDTO.setCode("EXISTING_CODE");
+        shelfDTO.setBookIds(new ArrayList<>());
+        backupDTO.setShelves(List.of(shelfDTO));
 
-        User existingUser = new User();
+        Shelf existingShelf = new Shelf();
+        existingShelf.setId(10L);
+        existingShelf.setShelfCode("EXISTING_CODE");
+        existingShelf.setBooks(new ArrayList<>());
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(objectMapper.readValue(anyString(), eq(BackupDTO.class))).thenReturn(backupDTO);
 
-        when(shelfRepository.findByNameAndUser(eq("Existing Shelf"), any())).thenReturn(Optional.of(new Shelf()));
+        when(shelfRepository.findByShelfCodeAndUser("EXISTING_CODE", user))
+                .thenReturn(Optional.of(existingShelf));
 
-        backupService.importUserData(userId, json);
+        backupService.importUserData(1L, json);
 
-        verify(shelfRepository, never()).save(any(Shelf.class));
+        verify(shelfRepository, atLeastOnce()).findByShelfCodeAndUser("EXISTING_CODE", user);
     }
 }

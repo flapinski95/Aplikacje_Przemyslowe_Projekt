@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: header}"></head>
+<body class="bg-light">
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6"> <div class="card shadow">
+            <div class="card-header bg-success text-white text-center">
+                <h4>Dołącz do Book Lovers</h4>
+            </div>
+            <div class="card-body">
+                <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+                <form th:action="@{/register}" th:object="${registerRequest}" method="post">
+
+                    <div class="mb-3">
+                        <label class="form-label">Imię i Nazwisko</label>
+                        <input type="text" th:field="*{fullName}" class="form-control"
+                               placeholder="np. Jan Kowalski"
+                               th:classappend="${#fields.hasErrors('fullName')} ? 'is-invalid' : ''">
+                        <div class="invalid-feedback" th:errors="*{fullName}">Błąd danych</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Adres Email</label>
+                        <input type="email" th:field="*{email}" class="form-control"
+                               placeholder="jan@example.com"
+                               th:classappend="${#fields.hasErrors('email')} ? 'is-invalid' : ''">
+                        <div class="invalid-feedback" th:errors="*{email}">Błąd emaila</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Nazwa użytkownika (Login)</label>
+                        <input type="text" th:field="*{username}" class="form-control"
+                               th:classappend="${#fields.hasErrors('username')} ? 'is-invalid' : ''">
+                        <div class="invalid-feedback" th:errors="*{username}">Błąd loginu</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Hasło</label>
+                        <input type="password" th:field="*{password}" class="form-control"
+                               th:classappend="${#fields.hasErrors('password')} ? 'is-invalid' : ''">
+                        <div class="invalid-feedback" th:errors="*{password}">Błąd hasła</div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success">Załóż darmowe konto</button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center text-muted">
+                <small>Masz już konto? <a href="/login" class="text-success fw-bold">Zaloguj się</a></small>
+            </div>
+        </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: header}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">📕 Dodaj Nową Książkę (Admin)</h4>
+                </div>
+                <div class="card-body">
+
+                    <form th:action="@{/admin/books/add}" th:object="${bookRequest}" method="post">
+
+                        <div class="mb-3">
+                            <label class="form-label">Tytuł</label>
+                            <input type="text" th:field="*{title}" class="form-control"
+                                   th:classappend="${#fields.hasErrors('title')} ? 'is-invalid' : ''">
+                            <div class="invalid-feedback" th:errors="*{title}">Błąd tytułu</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Autor</label>
+                            <input type="text" th:field="*{author}" class="form-control"
+                                   th:classappend="${#fields.hasErrors('author')} ? 'is-invalid' : ''">
+                            <div class="invalid-feedback" th:errors="*{author}">Błąd autora</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">ISBN</label>
+                            <input type="text" th:field="*{isbn}" class="form-control"
+                                   th:classappend="${#fields.hasErrors('isbn')} ? 'is-invalid' : ''">
+                            <div class="invalid-feedback" th:errors="*{isbn}">Błąd ISBN</div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger">Dodaj do bazy</button>
+                            <a href="/books" class="btn btn-outline-secondary">Anuluj</a>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

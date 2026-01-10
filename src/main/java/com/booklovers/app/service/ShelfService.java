@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,11 +30,13 @@ public class ShelfService {
         this.userRepository = userRepository;
     }
 
+    private static final Set<String> SYSTEM_SHELVES = Set.of("READ", "READING", "WANT_TO_READ");
+
     public void createDefaultShelves(User user) {
         log.info("Tworzenie domyślnych półek dla użytkownika: {}", user.getUsername());
         createShelf(user, "Przeczytane", "READ");
         createShelf(user, "Teraz czytam", "READING");
-        createShelf(user, "Chcę przeczytać", "WANT");
+        createShelf(user, "Chcę przeczytać", "WANT_TO_READ");
     }
 
     public Shelf createShelf(User user, String name, String code) {
@@ -50,11 +53,10 @@ public class ShelfService {
         return shelfRepository.save(shelf);
     }
 
-    public java.util.List<Shelf> getAllShelvesForUser(String username) {
+    public List<Shelf> getAllShelvesForUser(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Nie znaleziono użytkownika"));
 
-        log.info("Pobieranie półek dla: {}", username);
         return shelfRepository.findAllByUser(user);
     }
 
@@ -65,20 +67,34 @@ public class ShelfService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Shelf shelf = shelfRepository.findByShelfCodeAndUser(shelfCode, user)
-                .orElseThrow(() -> new RuntimeException("Nie masz półki o kodzie: " + shelfCode));
-
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new RuntimeException("Nie znaleziono książki"));
 
-        if (!shelf.getBooks().contains(book)) {
-            shelf.getBooks().add(book);
-            shelfRepository.save(shelf);
-            log.info("Sukces! Książka '{}' dodana do półki.", book.getTitle());
+        Shelf targetShelf = shelfRepository.findByShelfCodeAndUser(shelfCode, user)
+                .orElseThrow(() -> new RuntimeException("Nie masz półki o kodzie: " + shelfCode));
+
+        if (SYSTEM_SHELVES.contains(shelfCode)) {
+            List<Shelf> allShelves = shelfRepository.findAllByUser(user);
+            for (Shelf s : allShelves) {
+                if (SYSTEM_SHELVES.contains(s.getShelfCode())
+                        && !s.getShelfCode().equals(shelfCode)
+                        && s.getBooks().contains(book)) {
+                    s.getBooks().remove(book);
+                    shelfRepository.save(s);
+                    log.info("Przenoszenie: Usunięto książkę z półki {}", s.getShelfCode());
+                }
+            }
+        }
+
+        if (!targetShelf.getBooks().contains(book)) {
+            targetShelf.getBooks().add(book);
+            shelfRepository.save(targetShelf);
+            log.info("Sukces! Książka '{}' dodana do półki {}.", book.getTitle(), shelfCode);
         } else {
             log.warn("Książka '{}' już znajduje się na tej półce.", book.getTitle());
         }
     }
+
     public List<ExploreDTO> getExplorePage() {
         List<User> allUsers = userRepository.findAll();
         log.info("Generowanie strony Explore (feed społecznościowy)");
@@ -105,5 +121,66 @@ public class ShelfService {
             dto.setShelves(shelfSummaries);
             return dto;
         }).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void removeBookFromShelves(String username, Long bookId) {
+        log.info("Usuwanie książki ID={} ze wszystkich półek użytkownika {}", bookId, username);
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new RuntimeException("Book not found"));
+
+        List<Shelf> userShelves = shelfRepository.findAllByUser(user);
+
+        boolean removed = false;
+        for (Shelf shelf : userShelves) {
+            if (shelf.getBooks().remove(book)) {
+                shelfRepository.save(shelf);
+                removed = true;
+            }
+        }
+
+        if (removed) {
+            log.info("Książka usunięta z półek użytkownika.");
+        } else {
+            log.warn("Nie znaleziono książki na żadnej półce.");
+        }
+    }
+
+    @Transactional
+    public void deleteShelf(Long shelfId, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Shelf shelf = shelfRepository.findById(shelfId)
+                .orElseThrow(() -> new RuntimeException("Półka nie istnieje"));
+        if (!shelf.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Nie masz uprawnień do usunięcia tej półki");
+        }
+        if (SYSTEM_SHELVES.contains(shelf.getShelfCode())) {
+            log.warn("Próba usunięcia półki systemowej: {}", shelf.getShelfCode());
+            return;
+        }
+        log.info("Usuwanie własnej półki: {} (ID: {})", shelf.getName(), shelfId);
+        shelfRepository.delete(shelf);
+    }
+
+    public Shelf createCustomShelf(String username, String shelfName) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String shelfCode = "CUSTOM_" + shelfName.toUpperCase().replaceAll("\\s+", "_")
+                + "_" + System.currentTimeMillis();
+
+        Shelf shelf = new Shelf();
+        shelf.setName(shelfName);
+        shelf.setShelfCode(shelfCode);
+        shelf.setUser(user);
+        shelf.setBooks(new ArrayList<>());
+
+        return shelfRepository.save(shelf);
     }
 }

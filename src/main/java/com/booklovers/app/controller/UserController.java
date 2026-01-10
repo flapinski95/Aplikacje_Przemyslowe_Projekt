@@ -1,17 +1,16 @@
 package com.booklovers.app.controller;
 
 import com.booklovers.app.dto.UserProfileDTO;
-import com.booklovers.app.model.Review;
+import com.booklovers.app.model.Shelf;
 import com.booklovers.app.model.User;
 import com.booklovers.app.repository.ReviewRepository;
 import com.booklovers.app.repository.UserRepository;
+import com.booklovers.app.service.ShelfService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -20,10 +19,14 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final ReviewRepository reviewRepository;
+    private final ShelfService shelfService;
 
-    public UserController(UserRepository userRepository, ReviewRepository reviewRepository) {
+    public UserController(UserRepository userRepository,
+                          ReviewRepository reviewRepository,
+                          ShelfService shelfService) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
+        this.shelfService = shelfService;
     }
 
     @GetMapping("/me")
@@ -36,16 +39,16 @@ public class UserController {
         dto.setBio(user.getBio());
         dto.setAvatar(user.getAvatar());
 
+        List<Shelf> shelves = shelfService.getAllShelvesForUser(user.getUsername());
 
-        LocalDateTime startOfYear = LocalDateTime.now().withDayOfYear(1);
-        List<Review> userReviews = reviewRepository.findByUser(user);
+        int booksReadCount = shelves.stream()
+                .filter(shelf -> "READ".equals(shelf.getShelfCode()))
+                .findFirst()
+                .map(shelf -> shelf.getBooks().size())
+                .orElse(0);
 
-        int booksReadThisYear = (int) userReviews.stream()
-                .filter(r -> r.getCreatedAt().isAfter(startOfYear))
-                .count();
-
-        dto.setBooksReadThisYear(booksReadThisYear);
-        dto.setTotalReviews(userReviews.size());
+        dto.setBooksReadThisYear(booksReadCount);
+        dto.setTotalReviews(reviewRepository.countByUser(user));
 
         return ResponseEntity.ok(dto);
     }
@@ -60,6 +63,20 @@ public class UserController {
 
         userRepository.save(user);
         return ResponseEntity.ok("Profil zaktualizowany!");
+    }
+
+    @PutMapping("/me/goal")
+    public ResponseEntity<String> updateReadingGoal(@RequestParam Integer newGoal, Principal principal) {
+        User user = userRepository.findByUsername(principal.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (newGoal != null && newGoal > 0) {
+            user.setReadingGoal(newGoal);
+            userRepository.save(user);
+            return ResponseEntity.ok("Cel czytelniczy zaktualizowany na: " + newGoal);
+        }
+
+        return ResponseEntity.badRequest().body("Cel musi być liczbą dodatnią!");
     }
 
     @DeleteMapping("/me")

@@ -26,22 +26,26 @@ public class AuthService {
 
     @Transactional
     public void registerUser(RegisterRequest request) {
-        log.info("Próba rejestracji nowego użytkownika: {}", request.getUsername());
-
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
-            log.warn("Rejestracja nieudana. Login '{}' jest już zajęty.", request.getUsername());
-            throw new RuntimeException("Login jest już zajęty!");
+            throw new RuntimeException("Nazwa użytkownika jest już zajęta");
+        }
+
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Ten email jest już używany w systemie");
         }
 
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole("USER");
+
+        user.setEmail(request.getEmail());
+        user.setFullName(request.getFullName());
 
         userRepository.save(user);
-        log.info("Użytkownik '{}' został zapisany w bazie.", request.getUsername());
 
         shelfService.createDefaultShelves(user);
 
-        log.info("Rejestracja zakończona sukcesem dla: {}", request.getUsername());
+        log.info("Zarejestrowano nowego użytkownika: {}", user.getUsername());
     }
 }

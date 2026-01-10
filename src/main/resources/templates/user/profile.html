@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: header}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container mt-4">
+    <div class="row">
+
+        <div class="col-md-4">
+
+            <div class="card text-center shadow-sm mb-4">
+                <div class="card-body">
+                    <img th:src="${user.avatar != null && !user.avatar.isEmpty() ? user.avatar : 'https://ui-avatars.com/api/?name=' + user.username}"
+                         class="rounded-circle mb-3" width="100" height="100" alt="Avatar">
+
+                    <h3 th:text="${user.username}">User</h3>
+                    <p class="text-muted small" th:text="${user.bio ?: 'Brak opisu...'}">Bio...</p>
+
+                    <div class="d-flex justify-content-around mt-3 border-top pt-3">
+                        <div>
+                            <h5 class="mb-0" th:text="${profileDto.totalReviews}">0</h5>
+                            <small class="text-muted">Recenzji</small>
+                        </div>
+                        <div>
+                            <h5 class="mb-0" th:text="${profileDto.booksReadThisYear}">0</h5>
+                            <small class="text-muted">Przeczytane</small>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <button class="btn btn-sm btn-outline-primary w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#editProfile">
+                        <i class="bi bi-pencil"></i> Edytuj Profil
+                    </button>
+
+                    <div class="collapse mt-2 mb-3" id="editProfile">
+                        <form th:action="@{/profile/update}" th:object="${profileDto}" method="post" class="p-2 bg-light rounded">
+                            <input type="text" th:field="*{avatar}" class="form-control form-control-sm mb-2" placeholder="URL Avatara">
+                            <textarea th:field="*{bio}" class="form-control form-control-sm mb-2" placeholder="Twój opis..."></textarea>
+                            <button type="submit" class="btn btn-primary btn-sm w-100">Zapisz zmiany</button>
+                        </form>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <a href="/api/backup/export" class="btn btn-sm btn-outline-dark">
+                            <i class="bi bi-download"></i> Eksportuj dane (JSON)
+                        </a>
+
+                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#importSection">
+                            <i class="bi bi-upload"></i> Importuj dane
+                        </button>
+
+                        <div class="collapse" id="importSection">
+                            <form th:action="@{/profile/import}" method="post" enctype="multipart/form-data" class="p-2 border rounded">
+                                <input type="file" name="file" class="form-control form-control-sm mb-2" required>
+                                <button type="submit" class="btn btn-success btn-sm w-100">Wgraj plik</button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="card mt-3 shadow-sm border-0 bg-light">
+                <div class="card-body">
+                    <h5 class="card-title text-primary d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-trophy-fill"></i> Wyzwanie</span>
+
+                        <button class="btn btn-sm btn-link text-decoration-none" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#editGoalCollapse">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </h5>
+
+                    <div th:if="${progressPercent < 100}">
+                        <p class="card-text text-muted small mb-2">
+                            Na półce "Przeczytane": <strong><span th:text="${profileDto.booksReadThisYear}"></span> / <span th:text="${readingGoal}"></span></strong>
+                        </p>
+
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                                 role="progressbar"
+                                 th:style="'width: ' + ${progressPercent} + '%'"
+                                 th:text="${progressPercent} + '%'">
+                            </div>
+                        </div>
+                        <p class="text-end mt-1 small">
+                            Brakuje <strong th:text="${readingGoal - profileDto.booksReadThisYear}"></strong> książek! 🔥
+                        </p>
+                    </div>
+
+                    <div th:if="${progressPercent >= 100}" class="text-center py-2 bg-white rounded border border-success">
+                        <h2 class="mb-0">🎉</h2>
+                        <h6 class="text-success fw-bold">Cel Osiągnięty!</h6>
+                        <hr class="my-2">
+                        <p class="small mb-2">Podbij stawkę:</p>
+                        <form action="/profile/update-goal" method="post" class="d-flex justify-content-center gap-2">
+                            <input type="hidden" name="newGoal" th:value="${readingGoal + 10}">
+                            <button type="submit" class="btn btn-sm btn-success">Zwiększ cel (+10) 🚀</button>
+                        </form>
+                    </div>
+
+                    <div class="collapse mt-3" id="editGoalCollapse">
+                        <form action="/profile/update-goal" method="post" class="d-flex align-items-center gap-2 bg-white p-2 rounded border">
+                            <small class="text-muted">Cel:</small>
+                            <input type="number" name="newGoal" class="form-control form-control-sm w-50"
+                                   th:value="${readingGoal}" min="1">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">OK</button>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+
+            <div th:if="${param.updated}" class="alert alert-success py-2">Pomyślnie zaktualizowano półkę.</div>
+            <div th:if="${param.imported}" class="alert alert-success py-2">Dane zostały pomyślnie zaimportowane!</div>
+            <div th:if="${param.shelfCreated}" class="alert alert-success py-2">Nowa półka została utworzona.</div>
+            <div th:if="${param.shelfDeleted}" class="alert alert-info py-2">Półka została usunięta.</div>
+            <div th:if="${param.goalUpdated}" class="alert alert-primary py-2">Zaktualizowano cel czytelniczy!</div>
+            <div th:if="${param.error}" class="alert alert-danger py-2">Wystąpił błąd.</div>
+
+            <div class="card mb-4 shadow-sm bg-light border-0">
+                <div class="card-body py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-collection"></i> Moje Półki</h5>
+
+                    <form action="/shelves/create" method="post" class="d-flex gap-2">
+                        <input type="text" name="shelfName" class="form-control form-control-sm" placeholder="Nazwa nowej półki..." required>
+                        <button type="submit" class="btn btn-sm btn-success text-nowrap">
+                            <i class="bi bi-plus-lg"></i> Dodaj półkę
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div th:each="shelf : ${shelves}" class="card mb-4 shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center bg-white">
+                    <div>
+                        <span class="fw-bold fs-5 text-primary" th:text="${shelf.name}">Nazwa Półki</span>
+                        <span class="badge bg-secondary ms-2" th:text="${shelf.books.size()}">0</span>
+                    </div>
+
+                    <form th:if="${shelf.shelfCode != 'READ' && shelf.shelfCode != 'READING' && shelf.shelfCode != 'WANT_TO_READ'}"
+                          th:action="@{/shelves/delete}" method="post"
+                          onsubmit="return confirm('Czy na pewno usunąć tę półkę? Książki z niej nie znikną z systemu.');">
+                        <input type="hidden" name="shelfId" th:value="${shelf.id}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Usuń półkę">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </div>
+
+                <div class="card-body p-0">
+                    <div th:if="${shelf.books.empty}" class="p-3 text-muted text-center fst-italic">Pusta półka...</div>
+
+                    <div class="list-group list-group-flush">
+                        <div th:each="book : ${shelf.books}" class="list-group-item d-flex justify-content-between align-items-center">
+
+                            <div class="d-flex align-items-center flex-grow-1">
+                                <i class="bi bi-book text-primary me-3 fs-4"></i>
+                                <div>
+                                    <a th:href="@{/books/{id}(id=${book.id})}" class="fw-bold text-decoration-none text-dark" th:text="${book.title}">Tytuł</a>
+                                    <div class="text-muted small" th:text="${book.author}">Autor</div>
+                                </div>
+                            </div>
+
+                            <form th:action="@{/profile/move-book}" method="post" class="d-flex align-items-center gap-2">
+                                <input type="hidden" name="bookId" th:value="${book.id}"/>
+
+                                <select name="targetShelfCode" class="form-select form-select-sm" style="width: 160px;">
+                                    <option disabled selected>Przenieś...</option>
+
+                                    <option th:each="s : ${shelves}"
+                                            th:value="${s.shelfCode}"
+                                            th:text="${s.name}"
+                                            th:if="${s.shelfCode != shelf.shelfCode}">
+                                    </option>
+
+                                    <option value="REMOVE" class="text-danger fw-bold">❌ Usuń z półki</option>
+                                </select>
+
+                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </form>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

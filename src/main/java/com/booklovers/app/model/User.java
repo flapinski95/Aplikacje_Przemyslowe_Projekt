@@ -23,10 +23,14 @@ public class User {
     private String password;
 
     private String role;
+    @Column(nullable = false)
+    private Integer readingGoal = 50;
 
+
+    private String email;
+    private String fullName;
     private String bio;
     private String avatar;
-
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore

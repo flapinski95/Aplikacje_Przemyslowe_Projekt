@@ -4,10 +4,13 @@ import com.booklovers.app.dto.BookExploreDTO;
 import com.booklovers.app.dto.BookStatsDTO;
 import com.booklovers.app.model.Book;
 import com.booklovers.app.model.Review;
+import com.booklovers.app.model.Shelf;
 import com.booklovers.app.repository.BookRepository;
 import com.booklovers.app.repository.ReviewRepository;
+import com.booklovers.app.repository.ShelfRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -19,10 +22,12 @@ public class BookService {
 
     private final BookRepository bookRepository;
     private final ReviewRepository reviewRepository;
+    private final ShelfRepository shelfRepository;
 
-    public BookService(BookRepository bookRepository, ReviewRepository reviewRepository) {
+    public BookService(BookRepository bookRepository, ReviewRepository reviewRepository, ShelfRepository shelfRepository) {
         this.bookRepository = bookRepository;
         this.reviewRepository = reviewRepository;
+        this.shelfRepository = shelfRepository;
     }
 
     public List<BookExploreDTO> exploreBooks(String query) {
@@ -80,5 +85,19 @@ public class BookService {
         stats.setTotalReaders(reviews.size());
 
         return stats;
+    }
+    @Transactional
+    public void deleteBook(Long bookId) {
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new RuntimeException("Książka nie istnieje"));
+
+
+        for (Shelf shelf : book.getShelves()) {
+            shelf.getBooks().remove(book);
+            shelfRepository.save(shelf);
+        }
+
+        bookRepository.delete(book);
+        log.info("Usunięto książkę ID: {}", bookId);
     }
 }
