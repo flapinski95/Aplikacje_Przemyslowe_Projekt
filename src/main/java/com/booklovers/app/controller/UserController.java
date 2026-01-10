@@ -1,6 +1,7 @@
 package com.booklovers.app.controller;
 
 import com.booklovers.app.dto.UserProfileDTO;
+import com.booklovers.app.model.Review;
 import com.booklovers.app.model.Shelf;
 import com.booklovers.app.model.User;
 import com.booklovers.app.repository.ReviewRepository;
@@ -85,8 +86,14 @@ public class UserController {
         User user = userRepository.findByUsername(principal.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        List<Review> userReviews = reviewRepository.findByUser(user);
+        for (Review review : userReviews) {
+            review.setUser(null);
+            reviewRepository.save(review);
+        }
+
         userRepository.delete(user);
 
-        return ResponseEntity.ok("Konto zostało trwale usunięte. Żegnaj!");
+        return ResponseEntity.ok("Konto zostało usunięte. Twoje recenzje zostały zanonimizowane.");
     }
 }

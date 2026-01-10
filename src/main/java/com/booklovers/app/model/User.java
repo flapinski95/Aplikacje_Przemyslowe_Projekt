@@ -37,8 +37,17 @@ public class User {
     @ToString.Exclude
     private List<Shelf> shelves;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JsonIgnore
     @ToString.Exclude
     private List<Review> reviews;
+    @Column(nullable = false)
+    private boolean locked = false;
+    public boolean isLocked() {
+        return locked;
+    }
+
+    public void setLocked(boolean locked) {
+        this.locked = locked;
+    }
 }

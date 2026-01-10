@@ -6,63 +6,94 @@
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Panel Administratora</h2>
-        <a href="/books/add" class="btn btn-success">
+        <h2 class="text-light"><i class="bi bi-speedometer2"></i> Panel Administratora</h2>
+        <a href="/admin/books/add" class="btn btn-outline-warning">
             <i class="bi bi-plus-circle"></i> Dodaj Nową Książkę
         </a>
     </div>
 
-    <div th:if="${param.msg}" class="alert alert-success">Operacja zakończona sukcesem.</div>
+    <div th:if="${param.msg}" class="alert alert-success bg-opacity-10 text-success border-success mb-4">
+        <i class="bi bi-check-circle"></i> Operacja zakończona sukcesem.
+    </div>
 
-    <div class="card shadow-sm">
-        <div class="card-header bg-dark text-white">Zarządzanie Użytkownikami</div>
+    <div class="card border-secondary mb-4">
+        <div class="card-header bg-transparent border-secondary text-light">
+            <i class="bi bi-people"></i> Zarządzanie Użytkownikami
+        </div>
         <div class="card-body p-0">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                <tr>
-                    <th>ID</th>
-                    <th>Login</th>
-                    <th>Email</th>
-                    <th>Rola</th>
-                    <th>Akcje</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:each="u : ${users}">
-                    <td th:text="${u.id}">1</td>
-                    <td th:text="${u.username}">janek</td>
-                    <td th:text="${u.email}">jan@o2.pl</td>
-                    <td>
-                        <span class="badge"
-                              th:classappend="${u.role == 'ADMIN'} ? 'bg-danger' : 'bg-primary'"
-                              th:text="${u.role}">USER</span>
-                    </td>
-                    <td>
-                        <form th:if="${u.role != 'ADMIN'}"
-                              th:action="@{/admin/users/delete/{id}(id=${u.id})}"
-                              method="post" class="d-inline"
-                              onsubmit="return confirm('Na pewno usunąć?');">
-                            <button type="submit" class="btn btn-sm btn-outline-danger">Usuń</button>
-                        </form>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0 align-middle">
+                    <thead>
+                    <tr class="text-secondary">
+                        <th>ID</th>
+                        <th>Login</th>
+                        <th>Email</th>
+                        <th>Rola</th>
+                        <th class="text-end">Akcje</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="u : ${users}">
+                        <td th:text="${u.id}" class="text-secondary">1</td>
 
-                        <form th:if="${u.role != 'ADMIN'}"
-                              th:action="@{/admin/users/promote/{id}(id=${u.id})}"
-                              method="post" class="d-inline ms-1">
-                            <button type="submit" class="btn btn-sm btn-outline-success"
-                                    title="Nadaj uprawnienia Administratora"
-                                    onsubmit="return confirm('Czy na pewno chcesz mianować tego użytkownika administratorem?');">
-                                Awansuj
-                            </button>
-                        </form>
+                        <td>
+                            <span th:text="${u.username}"
+                                  th:class="${u.locked} ? 'text-decoration-line-through text-muted' : 'fw-bold text-light'">
+                                janek
+                            </span>
+                            <span th:if="${u.locked}" class="badge bg-danger ms-1" style="font-size: 0.6rem;">ZABLOKOWANY</span>
+                        </td>
 
-                        <span th:if="${u.role == 'ADMIN'}" class="text-muted small fst-italic">
-        Brak akcji
-    </span>
-                    </td>
+                        <td th:text="${u.email}" class="text-secondary">jan@o2.pl</td>
+                        <td>
+                            <span class="badge border"
+                                  th:classappend="${u.role == 'ADMIN'} ? 'border-danger text-danger' : 'border-primary text-primary'"
+                                  th:text="${u.role}">USER</span>
+                        </td>
+                        <td class="text-end">
 
-                </tr>
-                </tbody>
-            </table>
+                            <th:block th:if="${u.role != 'ADMIN'}">
+
+                                <form th:action="@{/admin/users/toggle-lock/{id}(id=${u.id})}"
+                                      method="post" class="d-inline me-1">
+
+                                    <button th:if="${u.locked}" type="submit" class="btn btn-sm btn-outline-success" title="Odblokuj dostęp">
+                                        <i class="bi bi-unlock"></i> Odblokuj
+                                    </button>
+
+                                    <button th:unless="${u.locked}" type="submit" class="btn btn-sm btn-outline-warning"
+                                            title="Zablokuj konto"
+                                            onsubmit="return confirm('Czy na pewno chcesz zablokować tego użytkownika?');">
+                                        <i class="bi bi-lock"></i> Zablokuj
+                                    </button>
+                                </form>
+
+                                <form th:action="@{/admin/users/delete/{id}(id=${u.id})}"
+                                      method="post" class="d-inline me-1"
+                                      onsubmit="return confirm('Na pewno usunąć użytkownika trwale?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i> Usuń
+                                    </button>
+                                </form>
+
+                                <form th:if="${!u.locked}"
+                                      th:action="@{/admin/users/promote/{id}(id=${u.id})}"
+                                      method="post" class="d-inline"
+                                      onsubmit="return confirm('Czy na pewno chcesz mianować tego użytkownika administratorem?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-info">
+                                        <i class="bi bi-arrow-up-circle"></i> Awansuj
+                                    </button>
+                                </form>
+                            </th:block>
+
+                            <span th:if="${u.role == 'ADMIN'}" class="text-muted small fst-italic">
+                                <i class="bi bi-shield-check"></i> Admin
+                            </span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>

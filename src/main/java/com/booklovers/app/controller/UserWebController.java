@@ -1,12 +1,15 @@
 package com.booklovers.app.controller;
 
 import com.booklovers.app.dto.UserProfileDTO;
+import com.booklovers.app.model.Review;
 import com.booklovers.app.model.Shelf;
 import com.booklovers.app.model.User;
 import com.booklovers.app.repository.ReviewRepository;
 import com.booklovers.app.repository.UserRepository;
 import com.booklovers.app.service.BackupService;
 import com.booklovers.app.service.ShelfService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -123,5 +126,25 @@ public class UserWebController {
         }
 
         return "redirect:/profile?updated";
+    }
+    @PostMapping("/profile/delete")
+    public String deleteAccount(@AuthenticationPrincipal UserDetails userDetails,
+                                HttpServletRequest request) {
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Nie znaleziono użytkownika"));
+
+        List<Review> userReviews = reviewRepository.findByUser(user);
+        for (Review review : userReviews) {
+            review.setUser(null);
+            reviewRepository.save(review);
+        }
+        userRepository.delete(user);
+
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+
+        return "redirect:/?msg=AccountDeleted";
     }
 }

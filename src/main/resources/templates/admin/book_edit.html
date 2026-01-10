@@ -7,37 +7,37 @@
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-6">
-            <div class="card shadow">
-                <div class="card-header bg-warning text-dark">
-                    <h4 class="mb-0">✏️ Edycja Książki</h4>
+            <div class="card border-warning mb-4">
+                <div class="card-header bg-transparent border-warning text-warning">
+                    <h4 class="mb-0"><i class="bi bi-pencil-square"></i> Edycja Książki</h4>
                 </div>
                 <div class="card-body">
 
                     <form th:action="@{/admin/books/edit/{id}(id=${bookId})}" th:object="${bookRequest}" method="post">
 
                         <div class="mb-3">
-                            <label class="form-label">Tytuł</label>
-                            <input type="text" th:field="*{title}" class="form-control"
+                            <label class="form-label text-secondary">Tytuł</label>
+                            <input type="text" th:field="*{title}" class="form-control bg-dark text-light border-secondary"
                                    th:classappend="${#fields.hasErrors('title')} ? 'is-invalid' : ''">
                             <div class="invalid-feedback" th:errors="*{title}">Błąd tytułu</div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Autor</label>
-                            <input type="text" th:field="*{author}" class="form-control"
+                            <label class="form-label text-secondary">Autor</label>
+                            <input type="text" th:field="*{author}" class="form-control bg-dark text-light border-secondary"
                                    th:classappend="${#fields.hasErrors('author')} ? 'is-invalid' : ''">
                             <div class="invalid-feedback" th:errors="*{author}">Błąd autora</div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">ISBN</label>
-                            <input type="text" th:field="*{isbn}" class="form-control"
+                            <label class="form-label text-secondary">ISBN</label>
+                            <input type="text" th:field="*{isbn}" class="form-control bg-dark text-light border-secondary"
                                    th:classappend="${#fields.hasErrors('isbn')} ? 'is-invalid' : ''">
                             <div class="invalid-feedback" th:errors="*{isbn}">Błąd ISBN</div>
                         </div>
 
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-warning">Zapisz zmiany</button>
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-warning text-dark fw-bold">Zapisz zmiany</button>
                             <a th:href="@{/books/{id}(id=${bookId})}" class="btn btn-outline-secondary">Anuluj</a>
                         </div>
                     </form>

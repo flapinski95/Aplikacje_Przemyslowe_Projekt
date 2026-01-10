@@ -19,9 +19,8 @@ public class BookController {
 
     private final BookRepository bookRepository;
     private final BookService bookService;
-    private final StatisticsRepository statisticsRepository; // Zmieniłem nazwę na bardziej czytelną
+    private final StatisticsRepository statisticsRepository;
 
-    // Jeden, spójny konstruktor dla wszystkich zależności
     public BookController(BookRepository bookRepository,
                           BookService bookService,
                           StatisticsRepository statisticsRepository) {
@@ -35,14 +34,6 @@ public class BookController {
         return bookRepository.findAll();
     }
 
-    @PostMapping
-    public Book addBook(@Valid @RequestBody BookRequest request) {
-        Book book = new Book();
-        book.setTitle(request.getTitle());
-        book.setAuthor(request.getAuthor());
-        book.setIsbn(request.getIsbn());
-        return bookRepository.save(book);
-    }
 
     @GetMapping("/explore")
     public List<BookExploreDTO> exploreBooks(@RequestParam(required = false) String query) {

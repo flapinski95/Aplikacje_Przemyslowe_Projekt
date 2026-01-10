@@ -58,16 +58,32 @@ public class BookWebController {
 
         List<Review> reviews = reviewRepository.findByBookId(id);
 
+        double averageRating = reviews.stream()
+                .mapToInt(Review::getRating)
+                .average()
+                .orElse(0.0);
+
+        java.util.Map<Integer, Long> ratingDistribution = new java.util.TreeMap<>(java.util.Collections.reverseOrder());
+        for (int i = 10; i >= 1; i--) {
+            ratingDistribution.put(i, 0L);
+        }
+
+        for (Review r : reviews) {
+            ratingDistribution.put(r.getRating(), ratingDistribution.get(r.getRating()) + 1);
+        }
+
         model.addAttribute("book", book);
         model.addAttribute("reviews", reviews);
+        model.addAttribute("averageRating", String.format("%.1f", averageRating));
+        model.addAttribute("totalReviews", reviews.size());
+        model.addAttribute("ratingDistribution", ratingDistribution);
+
         model.addAttribute("reviewRequest", new ReviewRequest());
 
         if (userDetails != null) {
             User user = userRepository.findByUsername(userDetails.getUsername()).orElseThrow();
-
             List<Shelf> userShelves = shelfService.getAllShelvesForUser(user.getUsername());
             model.addAttribute("userShelves", userShelves);
-            // ---------------------------------------
 
             boolean alreadyReviewed = reviewRepository.existsByBookAndUser(book, user);
             if(alreadyReviewed) {

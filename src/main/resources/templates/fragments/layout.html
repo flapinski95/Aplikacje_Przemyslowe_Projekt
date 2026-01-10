@@ -1,51 +1,168 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      data-bs-theme="dark">
 <head th:fragment="header">
     <meta charset="UTF-8">
     <title>Book Lovers</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    <style>
+        :root {
+            --silver-accent: #C0C0C0;     /* Srebrny */
+            --dark-bg: #121212;           /* Głęboka czerń tła */
+            --card-bg: #1e1e1e;           /* Ciemny grafit kart */
+            --input-bg: #2b2b2b;          /* Tło inputów */
+            --border-color: #444;         /* Subtelne obramowania */
+        }
+
+        body {
+            background-color: var(--dark-bg) !important;
+            color: #e0e0e0 !important;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* --- NAPRAWA KART (ZABIJANIE BIELI) --- */
+        .card {
+            background-color: var(--card-bg) !important; /* Wymuszenie ciemnego tła */
+            border: 1px solid var(--border-color) !important;
+            color: #e0e0e0 !important;
+        }
+        .card-header {
+            background-color: rgba(255, 255, 255, 0.05) !important; /* Lekko jaśniejszy nagłówek */
+            border-bottom: 1px solid var(--border-color) !important;
+            color: var(--silver-accent) !important;
+        }
+        .card-footer {
+            background-color: rgba(0, 0, 0, 0.2) !important;
+            border-top: 1px solid var(--border-color) !important;
+        }
+
+        /* --- NAPRAWA LIST (PÓŁKI) --- */
+        .list-group-item {
+            background-color: var(--card-bg) !important;
+            border-color: var(--border-color) !important;
+            color: #e0e0e0 !important;
+        }
+
+        /* --- ZMIANA NIEBIESKIEGO PRZYCISKU NA SREBRNY/GRAFITOWY --- */
+        .btn-primary {
+            background-color: #333 !important;      /* Ciemny grafit zamiast niebieskiego */
+            border-color: var(--silver-accent) !important;
+            color: #fff !important;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: var(--silver-accent) !important; /* Srebrny po najechaniu */
+            color: #000 !important; /* Czarny tekst dla kontrastu */
+            border-color: #fff !important;
+        }
+
+        /* --- INPUTY I FORMULARZE --- */
+        .form-control, .form-select {
+            background-color: var(--input-bg) !important;
+            border: 1px solid var(--border-color) !important;
+            color: #fff !important;
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: #333 !important;
+            border-color: var(--silver-accent) !important;
+            box-shadow: 0 0 5px rgba(192, 192, 192, 0.3) !important;
+            color: #fff !important;
+        }
+        ::placeholder { color: #888 !important; }
+
+        /* --- NAVBAR --- */
+        .navbar {
+            background-color: #000000 !important;
+            border-bottom: 1px solid #333;
+        }
+        .navbar-brand {
+            color: var(--silver-accent) !important;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .nav-link { color: #aaa !important; }
+        .nav-link:hover, .nav-link.active { color: #fff !important; }
+
+        /* --- DROPDOWN MENU --- */
+        .dropdown-menu {
+            background-color: #222 !important;
+            border: 1px solid #444 !important;
+        }
+        .dropdown-item { color: #ddd !important; }
+        .dropdown-item:hover {
+            background-color: #444 !important;
+            color: #fff !important;
+        }
+
+        /* Footer */
+        footer {
+            background-color: #080808 !important;
+            border-top: 1px solid #333 !important;
+            color: #666 !important;
+        }
+
+        /* Modalne okna i alerty */
+        .alert-info { background-color: rgba(13, 202, 240, 0.1) !important; border-color: rgba(13, 202, 240, 0.3); color: #0dcaf0; }
+        .alert-success { background-color: rgba(25, 135, 84, 0.1) !important; border-color: rgba(25, 135, 84, 0.3); color: #198754; }
+        .alert-danger { background-color: rgba(220, 53, 69, 0.1) !important; border-color: rgba(220, 53, 69, 0.3); color: #dc3545; }
+    </style>
 </head>
 <body>
 
-<nav th:fragment="navbar" class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+<nav th:fragment="navbar" class="navbar navbar-expand-lg navbar-dark mb-4">
     <div class="container">
-        <a class="navbar-brand" href="/">📚 Book Lovers</a>
+        <a class="navbar-brand" href="/"><i class="bi bi-book-half"></i> BOOK LOVERS</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>
+
         <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto">
-                <li class="nav-item"><a class="nav-link" href="/books">Przeglądaj</a></li>
+            <ul class="navbar-nav me-3">
+                <li class="nav-item"><a class="nav-link" href="/books">Katalog</a></li>
             </ul>
 
-            <ul class="navbar-nav">
+            <form class="d-flex mx-auto flex-grow-1" action="/books" method="get" style="max-width: 500px;">
+                <div class="input-group">
+                    <input class="form-control" type="search" name="query"
+                           placeholder="Szukaj tytułu, autora..."
+                           th:value="${param.query}" style="border-right: none;">
+                    <button class="btn btn-outline-secondary" type="submit" style="border-left: none;">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </form>
+
+            <ul class="navbar-nav ms-3">
                 <li class="nav-item" sec:authorize="!isAuthenticated()">
                     <a class="nav-link" href="/login">Zaloguj</a>
                 </li>
 
-                <li class="nav-item" sec:authorize="isAuthenticated()">
-                    <a class="nav-link text-warning fw-bold" href="/books/add">+ Dodaj Książkę</a>
+                <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                    <a class="nav-link fw-bold" href="/admin/books/add" style="color: var(--silver-accent) !important;">+ Książka</a>
                 </li>
 
                 <li class="nav-item dropdown" sec:authorize="isAuthenticated()">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                        Witaj, <span sec:authentication="name">User</span>
+                        <i class="bi bi-person-circle me-1" style="font-size: 1.2rem;"></i>
+                        <span sec:authentication="name" style="color: var(--silver-accent);">User</span>
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="/profile">Mój Profil</a></li>
-
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg">
+                        <li><a class="dropdown-item" href="/profile"><i class="bi bi-person"></i> Mój Profil</a></li>
                         <li sec:authorize="hasRole('ADMIN')">
-                            <hr class="dropdown-divider">
-                            <a class="dropdown-item text-danger fw-bold" href="/admin">Panel Admina</a>
+                            <hr class="dropdown-divider bg-secondary">
+                            <a class="dropdown-item text-danger fw-bold" href="/admin"><i class="bi bi-shield-lock"></i> Panel Admina</a>
                         </li>
-
-                        <li><hr class="dropdown-divider"></li>
+                        <li><hr class="dropdown-divider bg-secondary"></li>
                         <li>
-                            <form action="/logout" method="post">
-                                <button type="submit" class="dropdown-item">Wyloguj</button>
+                            <form action="/logout" method="post" class="d-inline">
+                                <button type="submit" class="dropdown-item text-secondary">
+                                    <i class="bi bi-box-arrow-right"></i> Wyloguj
+                                </button>
                             </form>
                         </li>
                     </ul>
@@ -55,9 +172,9 @@
     </div>
 </nav>
 
-<footer th:fragment="footer" class="bg-light text-center text-lg-start mt-5 py-3">
-    <div class="text-center">
-        © 2026 Book Lovers App
+<footer th:fragment="footer" class="text-center text-lg-start mt-5 py-4">
+    <div class="container text-center">
+        <p class="mb-1 text-muted">© 2026 <strong>Book Lovers Community</strong></p>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </footer>

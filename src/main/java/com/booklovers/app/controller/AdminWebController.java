@@ -2,6 +2,7 @@ package com.booklovers.app.controller;
 
 import com.booklovers.app.dto.BookRequest;
 import com.booklovers.app.model.Book;
+import com.booklovers.app.model.User;
 import com.booklovers.app.repository.BookRepository;
 import com.booklovers.app.repository.ReviewRepository;
 import com.booklovers.app.repository.UserRepository;
@@ -60,6 +61,21 @@ public class AdminWebController {
     public String deleteBook(@PathVariable Long id) {
         bookService.deleteBook(id);
         return "redirect:/books?msg=BookDeleted";
+    }
+    @PostMapping("/users/toggle-lock/{id}")
+    public String toggleUserLock(@PathVariable Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if ("ADMIN".equals(user.getRole())) {
+            return "redirect:/admin?error=CannotBlockAdmin";
+        }
+
+        user.setLocked(!user.isLocked());
+        userRepository.save(user);
+
+        String status = user.isLocked() ? "UserBlocked" : "UserUnlocked";
+        return "redirect:/admin?msg=" + status;
     }
 
     @PostMapping("/reviews/delete/{id}")

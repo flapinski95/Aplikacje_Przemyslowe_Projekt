@@ -8,62 +8,49 @@
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>📚 Katalog Książek</h2>
+        <h2 class="text-light"><i class="bi bi-collection"></i> Katalog Książek</h2>
 
-        <a sec:authorize="hasRole('ADMIN')" href="/admin/books/add" class="btn btn-danger">
-            <i class="bi bi-plus-lg"></i> Dodaj Książkę (Admin)
+        <a sec:authorize="hasRole('ADMIN')" href="/admin/books/add" class="btn btn-outline-light">
+            <i class="bi bi-plus-lg"></i> Dodaj Książkę
         </a>
     </div>
 
-    <div class="card bg-light mb-4 p-3 shadow-sm">
-        <form action="/books" method="get" class="d-flex gap-2">
-            <input class="form-control" type="search" name="query" th:value="${query}"
-                   placeholder="Wpisz tytuł, autora lub ISBN...">
-            <button class="btn btn-primary" type="submit">
-                <i class="bi bi-search"></i> Szukaj
-            </button>
-            <a href="/books" class="btn btn-outline-secondary" title="Wyczyść filtr">
-                <i class="bi bi-x-lg"></i>
-            </a>
-        </form>
-    </div>
-
-    <div th:if="${books.empty}" class="alert alert-info text-center py-4">
-        <h4>Nie znaleziono żadnych książek 🧐</h4>
-        <p>Spróbuj zmienić zapytanie lub dodaj nową pozycję.</p>
+    <div th:if="${books.empty}" class="alert alert-info bg-opacity-10 border-info text-info text-center py-4">
+        <h4><i class="bi bi-search"></i> Nie znaleziono żadnych książek</h4>
+        <p class="mb-0">Spróbuj zmienić zapytanie w pasku na górze.</p>
     </div>
 
     <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
         <div class="col" th:each="book : ${books}">
-            <div class="card h-100 shadow-sm border-0 hover-shadow transition">
+            <div class="card h-100 border-secondary book-card" style="background-color: #1e1e1e;">
                 <div class="card-body d-flex flex-column">
 
-                    <h5 class="card-title fw-bold text-primary" th:text="${book.title}">Tytuł</h5>
-                    <h6 class="card-subtitle mb-2 text-muted" th:text="${book.author}">Autor</h6>
+                    <h5 class="card-title fw-bold text-white mb-1" th:text="${book.title}">Tytuł</h5>
+                    <h6 class="card-subtitle mb-3 text-secondary" th:text="${book.author}">Autor</h6>
 
                     <div class="mb-3">
-                        <span th:if="${book.averageRating > 0}" class="badge bg-warning text-dark">
+                        <span th:if="${book.averageRating > 0}" class="badge border border-warning text-warning bg-transparent">
                             <i class="bi bi-star-fill"></i> <span th:text="${book.averageRating}">0.0</span>/10
                         </span>
-                        <span th:unless="${book.averageRating > 0}" class="badge bg-secondary">
+                        <span th:unless="${book.averageRating > 0}" class="badge border border-secondary text-secondary bg-transparent">
                             Brak ocen
                         </span>
                         <small class="text-muted ms-1" th:text="'(' + ${book.reviewCount} + ' opinii)'"></small>
                     </div>
 
-                    <p class="card-text small text-muted">ISBN: <span th:text="${book.isbn}"></span></p>
+                    <p class="card-text small text-muted font-monospace">ISBN: <span th:text="${book.isbn}"></span></p>
 
-                    <div class="mt-auto pt-3 border-top">
+                    <div class="mt-auto pt-3 border-top border-secondary">
                         <div class="d-grid gap-2">
-                            <a th:href="@{/books/{id}(id=${book.id})}" class="btn btn-outline-primary">
+                            <a th:href="@{/books/{id}(id=${book.id})}" class="btn btn-outline-light btn-sm">
                                 Zobacz szczegóły
                             </a>
 
                             <form sec:authorize="hasRole('ADMIN')"
                                   th:action="@{/admin/books/delete/{id}(id=${book.id})}"
                                   method="post"
-                                  onsubmit="return confirm('UWAGA: Czy na pewno usunąć tę książkę? Zostanie ona usunięta również z półek użytkowników!');">
-                                <button type="submit" class="btn btn-danger btn-sm w-100">
+                                  onsubmit="return confirm('UWAGA: Czy na pewno usunąć tę książkę?');">
+                                <button type="submit" class="btn btn-outline-danger btn-sm w-100 border-0">
                                     <i class="bi bi-trash"></i> Usuń (Admin)
                                 </button>
                             </form>
@@ -79,10 +66,11 @@
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 
 <style>
-    .hover-shadow:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
-        transition: all 0.3s ease;
+    .book-card { transition: all 0.3s ease; }
+    .book-card:hover {
+        transform: translateY(-5px);
+        border-color: #C0C0C0 !important;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.5) !important;
     }
 </style>
 

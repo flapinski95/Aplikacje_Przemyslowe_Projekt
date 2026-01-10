@@ -28,12 +28,14 @@ public class CustomUserDetailsService implements UserDetailsService {
                     return new UsernameNotFoundException("Nie znaleziono użytkownika");
                 });
 
-        log.info("Pomyślnie załadowano dane użytkownika: {} (Rola: {})", username, user.getRole());
+        log.info("Pomyślnie załadowano dane użytkownika: {} (Rola: {}, Zablokowany: {})",
+                username, user.getRole(), user.isLocked());
 
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getUsername())
                 .password(user.getPassword())
                 .roles(user.getRole())
+                .accountLocked(user.isLocked())
                 .build();
     }
 }

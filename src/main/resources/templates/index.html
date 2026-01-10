@@ -1,22 +1,58 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: header}"></head>
 <body>
 <nav th:replace="~{fragments/layout :: navbar}"></nav>
 
 <div class="container text-center mt-5">
-    <div class="p-5 mb-4 bg-light rounded-3 shadow-sm">
-        <div class="container-fluid py-5">
-            <h1 class="display-5 fw-bold text-primary">Witaj w Book Lovers! 📚</h1>
-            <p class="col-md-8 fs-4 mx-auto text-muted">
-                Twoje miejsce do odkrywania książek, tworzenia wirtualnych półek i dzielenia się opiniami.
+
+    <div class="p-5 mb-5 rounded-3 border border-secondary shadow-lg"
+         style="background: linear-gradient(145deg, #1a1a1a, #121212);">
+        <div class="container-fluid py-4">
+            <h1 class="display-4 fw-bold text-light mb-3">
+                Witaj w <span style="color: #C0C0C0;">Book Lovers</span> <i class="bi bi-journal-bookmark-fill text-secondary"></i>
+            </h1>
+            <p class="col-md-8 fs-5 mx-auto text-secondary mb-4">
+                Twoje minimalistyczne miejsce do odkrywania literatury, tworzenia wirtualnych półek i dzielenia się opiniami.
             </p>
-            <div class="mt-4">
-                <a href="/books" class="btn btn-primary btn-lg px-4 me-2">Przeglądaj Książki</a>
-                <a href="/register" class="btn btn-outline-secondary btn-lg px-4" sec:authorize="!isAuthenticated()">Dołącz do nas</a>
+
+            <div class="d-flex justify-content-center gap-3">
+                <a href="/books" class="btn btn-primary btn-lg px-4 fw-bold">
+                    <i class="bi bi-collection"></i> Przeglądaj Książki
+                </a>
+
+                <a href="/register" class="btn btn-outline-secondary btn-lg px-4" sec:authorize="!isAuthenticated()">
+                    <i class="bi bi-person-plus"></i> Dołącz do nas
+                </a>
             </div>
         </div>
     </div>
+
+    <div class="row g-4 text-secondary">
+        <div class="col-md-4">
+            <div class="p-4 border border-secondary rounded h-100" style="background-color: #1e1e1e;">
+                <i class="bi bi-search fs-1 mb-3 d-block text-light"></i>
+                <h5 class="text-light fw-bold">Odkrywaj</h5>
+                <p class="small mb-0">Przeszukuj katalog, znajduj nowości i klasyki literatury.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="p-4 border border-secondary rounded h-100" style="background-color: #1e1e1e;">
+                <i class="bi bi-bookmarks fs-1 mb-3 d-block text-light"></i>
+                <h5 class="text-light fw-bold">Organizuj</h5>
+                <p class="small mb-0">Twórz własne półki: "Do przeczytania", "Ulubione", "Sci-Fi".</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="p-4 border border-secondary rounded h-100" style="background-color: #1e1e1e;">
+                <i class="bi bi-chat-quote fs-1 mb-3 d-block text-light"></i>
+                <h5 class="text-light fw-bold">Oceniaj</h5>
+                <p class="small mb-0">Zostawiaj recenzje i dyskutuj z innymi czytelnikami.</p>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>

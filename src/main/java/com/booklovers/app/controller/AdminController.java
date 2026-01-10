@@ -1,9 +1,9 @@
 package com.booklovers.app.controller;
 
-import com.booklovers.app.dto.BookRequest; // <--- Import DTO
-import com.booklovers.app.model.Book;      // <--- Import Modelu
+import com.booklovers.app.dto.BookRequest;
+import com.booklovers.app.model.Book;
 import com.booklovers.app.model.User;
-import com.booklovers.app.repository.BookRepository; // <--- Import Repozytorium
+import com.booklovers.app.repository.BookRepository;
 import com.booklovers.app.repository.ReviewRepository;
 import com.booklovers.app.repository.UserRepository;
 import com.booklovers.app.service.BookService;
@@ -31,14 +31,37 @@ public class AdminController {
         this.bookRepository = bookRepository;
     }
 
+    @PutMapping("/users/{userId}/lock")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> toggleBlockUser(@PathVariable Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if ("ADMIN".equals(user.getRole())) {
+            return ResponseEntity.badRequest().body("Nie można zablokować Administratora.");
+        }
+
+        boolean newStatus = !user.isLocked();
+        user.setLocked(newStatus);
+        userRepository.save(user);
+
+        String statusMsg = newStatus ? "zablokowany" : "odblokowany";
+        return ResponseEntity.ok("Użytkownik " + user.getUsername() + " został " + statusMsg + ".");
+    }
+
     @DeleteMapping("/users/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> deleteUser(@PathVariable Long userId) {
         if (!userRepository.existsById(userId)) {
             return ResponseEntity.notFound().build();
         }
+        User user = userRepository.findById(userId).get();
+        if ("ADMIN".equals(user.getRole())) {
+            return ResponseEntity.badRequest().body("Nie można usunąć Administratora.");
+        }
+
         userRepository.deleteById(userId);
-        return ResponseEntity.ok("Użytkownik został usunięty (zbanowany).");
+        return ResponseEntity.ok("Użytkownik został usunięty.");
     }
 
     @DeleteMapping("/reviews/{reviewId}")
@@ -84,5 +107,13 @@ public class AdminController {
         bookRepository.save(book);
 
         return ResponseEntity.ok(book);
+    }
+    @PostMapping("/books/add")
+    public Book addBook(@Valid @RequestBody BookRequest request) {
+        Book book = new Book();
+        book.setTitle(request.getTitle());
+        book.setAuthor(request.getAuthor());
+        book.setIsbn(request.getIsbn());
+        return bookRepository.save(book);
     }
 }
