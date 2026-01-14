@@ -1,27 +1,21 @@
 package com.booklovers.app.controller;
 
 import com.booklovers.app.dto.UserProfileDTO;
-import com.booklovers.app.model.Review;
 import com.booklovers.app.model.Shelf;
 import com.booklovers.app.model.User;
-import com.booklovers.app.repository.ReviewRepository;
-import com.booklovers.app.repository.UserRepository;
 import com.booklovers.app.service.BackupService;
 import com.booklovers.app.service.ShelfService;
+import com.booklovers.app.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
@@ -30,49 +24,31 @@ import java.util.List;
 @Controller
 public class UserWebController {
 
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final ShelfService shelfService;
-    private final ReviewRepository reviewRepository;
+    private final BackupService backupService;
 
-    @Autowired
-    private BackupService backupService;
-
-    public UserWebController(UserRepository userRepository, ShelfService shelfService, ReviewRepository reviewRepository) {
-        this.userRepository = userRepository;
+    public UserWebController(UserService userService, ShelfService shelfService, BackupService backupService) {
+        this.userService = userService;
         this.shelfService = shelfService;
-        this.reviewRepository = reviewRepository;
+        this.backupService = backupService;
     }
 
     @GetMapping("/profile")
     public String myProfile(@AuthenticationPrincipal UserDetails userDetails, Model model) {
-        User user = userRepository.findByUsername(userDetails.getUsername()).orElseThrow();
-        List<Shelf> shelves = shelfService.getAllShelvesForUser(user.getUsername());
-
-        int booksReadCount = shelves.stream()
-                .filter(shelf -> "READ".equals(shelf.getShelfCode()))
-                .findFirst()
-                .map(shelf -> shelf.getBooks().size())
-                .orElse(0);
-
-        int readingGoal = (user.getReadingGoal() != null && user.getReadingGoal() > 0)
-                ? user.getReadingGoal() : 50;
-
-
-        UserProfileDTO profileDto = new UserProfileDTO();
-        profileDto.setUsername(user.getUsername());
-        profileDto.setBio(user.getBio());
-        profileDto.setAvatar(user.getAvatar());
-        profileDto.setTotalReviews(reviewRepository.countByUser(user));
-        profileDto.setBooksReadThisYear(booksReadCount);
+        String username = userDetails.getUsername();
+        User user = userService.getUserByUsername(username);
+        UserProfileDTO profileDto = userService.getUserProfile(username);
+        List<Shelf> shelves = shelfService.getAllShelvesForUser(username);
+        int readingGoal = (user.getReadingGoal() != null && user.getReadingGoal() > 0) ? user.getReadingGoal() : 50;
+        int booksReadCount = profileDto.getBooksReadThisYear();
+        int progressPercent = (readingGoal > 0) ? (booksReadCount * 100) / readingGoal : 0;
 
         model.addAttribute("user", user);
         model.addAttribute("shelves", shelves);
         model.addAttribute("profileDto", profileDto);
-
         model.addAttribute("readingGoal", readingGoal);
-
-        int progressPercent = (readingGoal > 0) ? (booksReadCount * 100) / readingGoal : 0;
-        model.addAttribute("progressPercent", Math.min(progressPercent, 100)); // Max 100%
+        model.addAttribute("progressPercent", Math.min(progressPercent, 100));
 
         return "user/profile";
     }
@@ -80,53 +56,41 @@ public class UserWebController {
     @PostMapping("/profile/update-goal")
     public String updateReadingGoal(@AuthenticationPrincipal UserDetails userDetails,
                                     @RequestParam Integer newGoal) {
-        User user = userRepository.findByUsername(userDetails.getUsername()).orElseThrow();
-
-        if (newGoal != null && newGoal > 0) {
-            user.setReadingGoal(newGoal);
-            userRepository.save(user);
-        }
-
+        userService.updateReadingGoal(userDetails.getUsername(), newGoal);
         return "redirect:/profile?goalUpdated=true";
     }
 
     @PostMapping("/profile/update")
     public String updateProfile(@AuthenticationPrincipal UserDetails userDetails,
                                 @ModelAttribute UserProfileDTO profileDto) {
-        User user = userRepository.findByUsername(userDetails.getUsername()).orElseThrow();
-        user.setBio(profileDto.getBio());
-        user.setAvatar(profileDto.getAvatar());
-        userRepository.save(user);
+        userService.updateProfile(userDetails.getUsername(), profileDto);
         return "redirect:/profile?success";
     }
 
     @GetMapping("/profile/export")
     public ResponseEntity<String> exportProfile(@AuthenticationPrincipal UserDetails userDetails,
-                                                 @RequestParam(defaultValue = "json") String format) {
+                                                @RequestParam(defaultValue = "json") String format) {
         try {
-            User user = userRepository.findByUsername(userDetails.getUsername())
-                    .orElseThrow(() -> new RuntimeException("Nie znaleziono użytkownika"));
+            // --- POPRAWKA: Pobieramy ID użytkownika ---
+            User user = userService.getUserByUsername(userDetails.getUsername());
+            Long userId = user.getId();
+            // ------------------------------------------
 
             String content;
             String filename;
             MediaType mediaType;
 
             if ("csv".equalsIgnoreCase(format)) {
-                content = backupService.exportUserDataToCSV(user.getId());
+                // Przekazujemy ID (Long), nie username (String)
+                content = backupService.exportUserDataToCSV(userId);
                 filename = "user_backup.csv";
                 mediaType = MediaType.TEXT_PLAIN;
-            } else if ("pdf".equalsIgnoreCase(format)) {
-                byte[] pdfContent = backupService.exportUserDataToPDF(user.getId());
-                return ResponseEntity.ok()
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"user_backup.pdf\"")
-                        .contentType(MediaType.APPLICATION_PDF)
-                        .body(new String(pdfContent, StandardCharsets.ISO_8859_1));
             } else {
-                content = backupService.exportUserData(user.getId());
+                // Przekazujemy ID (Long)
+                content = backupService.exportUserData(userId);
                 filename = "user_backup.json";
                 mediaType = MediaType.APPLICATION_JSON;
             }
-
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                     .contentType(mediaType)
@@ -141,13 +105,19 @@ public class UserWebController {
                                @RequestParam("file") MultipartFile file) {
         try {
             if (!file.isEmpty()) {
-                User user = userRepository.findByUsername(userDetails.getUsername()).orElseThrow();
+                // --- POPRAWKA: Pobieramy ID użytkownika ---
+                User user = userService.getUserByUsername(userDetails.getUsername());
+                Long userId = user.getId();
+                // ------------------------------------------
+
                 String content = new String(file.getBytes(), StandardCharsets.UTF_8);
-                backupService.importUserData(user.getId(), content);
+
+                // Przekazujemy ID (Long)
+                backupService.importUserData(userId, content);
+
                 return "redirect:/profile?imported=true";
             }
         } catch (Exception e) {
-            e.printStackTrace();
             return "redirect:/profile?error=import_failed";
         }
         return "redirect:/profile?error=empty_file";
@@ -157,33 +127,23 @@ public class UserWebController {
     public String moveBookOnShelf(@AuthenticationPrincipal UserDetails userDetails,
                                   @RequestParam Long bookId,
                                   @RequestParam String targetShelfCode) {
-
         if ("REMOVE".equals(targetShelfCode)) {
             shelfService.removeBookFromShelves(userDetails.getUsername(), bookId);
         } else {
             shelfService.addBookToShelfByCode(userDetails.getUsername(), targetShelfCode, bookId);
         }
-
         return "redirect:/profile?updated";
     }
+
     @PostMapping("/profile/delete")
     public String deleteAccount(@AuthenticationPrincipal UserDetails userDetails,
                                 HttpServletRequest request) {
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("Nie znaleziono użytkownika"));
-
-        List<Review> userReviews = reviewRepository.findByUser(user);
-        for (Review review : userReviews) {
-            review.setUser(null);
-            reviewRepository.save(review);
-        }
-        userRepository.delete(user);
+        userService.deleteAccount(userDetails.getUsername());
 
         HttpSession session = request.getSession(false);
         if (session != null) {
             session.invalidate();
         }
-
         return "redirect:/?msg=AccountDeleted";
     }
 }

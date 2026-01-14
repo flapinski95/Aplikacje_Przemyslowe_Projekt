@@ -1,99 +1,46 @@
 package com.booklovers.app.controller;
 
 import com.booklovers.app.dto.UserProfileDTO;
-import com.booklovers.app.model.Review;
-import com.booklovers.app.model.Shelf;
-import com.booklovers.app.model.User;
-import com.booklovers.app.repository.ReviewRepository;
-import com.booklovers.app.repository.UserRepository;
-import com.booklovers.app.service.ShelfService;
+import com.booklovers.app.service.UserService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/users")
 public class UserController {
 
-    private final UserRepository userRepository;
-    private final ReviewRepository reviewRepository;
-    private final ShelfService shelfService;
+    private final UserService userService;
 
-    public UserController(UserRepository userRepository,
-                          ReviewRepository reviewRepository,
-                          ShelfService shelfService) {
-        this.userRepository = userRepository;
-        this.reviewRepository = reviewRepository;
-        this.shelfService = shelfService;
+    public UserController(UserService userService) {
+        this.userService = userService;
     }
 
     @GetMapping("/me")
     public ResponseEntity<UserProfileDTO> getMyProfile(Principal principal) {
-        User user = userRepository.findByUsername(principal.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        UserProfileDTO dto = new UserProfileDTO();
-        dto.setUsername(user.getUsername());
-        dto.setBio(user.getBio());
-        dto.setAvatar(user.getAvatar());
-
-        List<Shelf> shelves = shelfService.getAllShelvesForUser(user.getUsername());
-
-        int booksReadCount = shelves.stream()
-                .filter(shelf -> "READ".equals(shelf.getShelfCode()))
-                .findFirst()
-                .map(shelf -> shelf.getBooks().size())
-                .orElse(0);
-
-        dto.setBooksReadThisYear(booksReadCount);
-        dto.setTotalReviews(reviewRepository.countByUser(user));
-
+        UserProfileDTO dto = userService.getUserProfile(principal.getName());
         return ResponseEntity.ok(dto);
     }
 
     @PutMapping("/me")
     public ResponseEntity<String> updateProfile(@RequestBody UserProfileDTO request, Principal principal) {
-        User user = userRepository.findByUsername(principal.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (request.getBio() != null) user.setBio(request.getBio());
-        if (request.getAvatar() != null) user.setAvatar(request.getAvatar());
-
-        userRepository.save(user);
+        userService.updateProfile(principal.getName(), request);
         return ResponseEntity.ok("Profil zaktualizowany!");
     }
 
     @PutMapping("/me/goal")
     public ResponseEntity<String> updateReadingGoal(@RequestParam Integer newGoal, Principal principal) {
-        User user = userRepository.findByUsername(principal.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (newGoal != null && newGoal > 0) {
-            user.setReadingGoal(newGoal);
-            userRepository.save(user);
-            return ResponseEntity.ok("Cel czytelniczy zaktualizowany na: " + newGoal);
+        if (newGoal == null || newGoal <= 0) {
+            return ResponseEntity.badRequest().body("Cel musi być liczbą dodatnią!");
         }
-
-        return ResponseEntity.badRequest().body("Cel musi być liczbą dodatnią!");
+        userService.updateReadingGoal(principal.getName(), newGoal);
+        return ResponseEntity.ok("Cel czytelniczy zaktualizowany na: " + newGoal);
     }
 
     @DeleteMapping("/me")
-    @Transactional
     public ResponseEntity<Void> deleteAccount(Principal principal) {
-        User user = userRepository.findByUsername(principal.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        List<Review> userReviews = reviewRepository.findByUser(user);
-        for (Review review : userReviews) {
-            review.setUser(null);
-            reviewRepository.save(review);
-        }
-
-        userRepository.delete(user);
-
+        userService.deleteAccount(principal.getName());
         return ResponseEntity.noContent().build();
     }
 }

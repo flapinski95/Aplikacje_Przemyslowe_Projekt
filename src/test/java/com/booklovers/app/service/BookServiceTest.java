@@ -65,7 +65,6 @@ class BookServiceTest {
 
     @Test
     void shouldCalculateAverageRatingCorrectly() {
-
         Book book = new Book();
         book.setId(10L);
 
@@ -75,9 +74,7 @@ class BookServiceTest {
         when(bookRepository.findAll()).thenReturn(List.of(book));
         when(reviewRepository.findByBookId(10L)).thenReturn(List.of(r1, r2));
 
-
         List<BookExploreDTO> result = bookService.exploreBooks(null);
-
 
         BookExploreDTO dto = result.get(0);
         assertEquals(2, dto.getReviewCount());
@@ -86,7 +83,6 @@ class BookServiceTest {
 
     @Test
     void shouldHandleZeroReviews_AverageShouldBeZero() {
-
         Book book = new Book();
         book.setId(10L);
 

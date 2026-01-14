@@ -2,13 +2,9 @@ package com.booklovers.app.controller;
 
 import com.booklovers.app.dto.BookRequest;
 import com.booklovers.app.model.Book;
-import com.booklovers.app.model.User;
-import com.booklovers.app.repository.BookRepository;
-import com.booklovers.app.repository.ReviewRepository;
-import com.booklovers.app.repository.UserRepository;
+import com.booklovers.app.service.AdminService;
 import com.booklovers.app.service.BookService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -18,8 +14,6 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -35,87 +29,80 @@ class AdminControllerTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
-    @MockBean private UserRepository userRepository;
-    @MockBean private ReviewRepository reviewRepository;
-    @MockBean private BookRepository bookRepository;
+    @MockBean private AdminService adminService;
     @MockBean private BookService bookService;
-
-    private User testUser;
-    private User adminUser;
-
-    @BeforeEach
-    void setUp() {
-        testUser = new User();
-        testUser.setId(2L);
-        testUser.setUsername("user");
-        testUser.setEmail("user@example.com");
-        testUser.setRole("USER");
-        testUser.setLocked(false);
-
-        adminUser = new User();
-        adminUser.setId(1L);
-        adminUser.setUsername("admin");
-        adminUser.setEmail("admin@example.com");
-        adminUser.setRole("ADMIN");
-    }
 
     @Test
     @WithMockUser(roles = "ADMIN")
     void shouldDeleteReview() throws Exception {
-        when(reviewRepository.existsById(1L)).thenReturn(true);
-
         mockMvc.perform(delete("/api/v1/admin/reviews/1"))
                 .andExpect(status().isNoContent());
 
-        verify(reviewRepository).deleteById(1L);
+        verify(adminService).deleteReview(1L);
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void shouldDeleteReview_NotFound() throws Exception {
+        doThrow(new RuntimeException("Not found")).when(adminService).deleteReview(999L);
+
+        mockMvc.perform(delete("/api/v1/admin/reviews/999"))
+                .andExpect(status().isNotFound());
     }
 
     @Test
     @WithMockUser(roles = "ADMIN")
     void shouldDeleteUser() throws Exception {
-        when(userRepository.existsById(2L)).thenReturn(true);
-        when(userRepository.findById(2L)).thenReturn(Optional.of(testUser));
-
         mockMvc.perform(delete("/api/v1/admin/users/2"))
                 .andExpect(status().isNoContent());
 
-        verify(userRepository).deleteById(2L);
+        verify(adminService).deleteUser(2L);
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void shouldDeleteUser_CannotDeleteAdmin() throws Exception {
+        doThrow(new IllegalStateException("Nie można usunąć Administratora."))
+                .when(adminService).deleteUser(1L);
+
+        mockMvc.perform(delete("/api/v1/admin/users/1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Nie można usunąć Administratora."));
     }
 
     @Test
     @WithMockUser(roles = "ADMIN")
     void shouldPromoteToAdmin() throws Exception {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(testUser));
-
         mockMvc.perform(put("/api/v1/admin/promote/2"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("jest teraz ADMINEM")));
+                .andExpect(content().string("Użytkownik otrzymał uprawnienia ADMINA."));
 
-        verify(userRepository).save(argThat(user -> "ADMIN".equals(user.getRole())));
+        verify(adminService).promoteToAdmin(2L);
     }
 
     @Test
     @WithMockUser(roles = "ADMIN")
     void shouldToggleBlockUser() throws Exception {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(testUser));
+        when(adminService.toggleUserLock(2L)).thenReturn("zablokowany");
 
         mockMvc.perform(put("/api/v1/admin/users/2/lock"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("zablokowany")));
 
-        verify(userRepository).save(argThat(User::isLocked));
+        verify(adminService).toggleUserLock(2L);
     }
 
     @Test
     @WithMockUser(roles = "ADMIN")
     void shouldNotBlockAdmin() throws Exception {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(adminUser));
+        doThrow(new IllegalStateException("Nie można zablokować Administratora."))
+                .when(adminService).toggleUserLock(1L);
 
         mockMvc.perform(put("/api/v1/admin/users/1/lock"))
-                .andExpect(status().isBadRequest());
-
-        verify(userRepository, never()).save(any());
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Nie można zablokować Administratora."));
     }
+
     @Test
     @WithMockUser(roles = "ADMIN")
     void shouldDeleteBook() throws Exception {
@@ -123,105 +110,48 @@ class AdminControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(bookService).deleteBook(100L);
-
-        verify(bookService).deleteBook(100L);
     }
 
     @Test
     @WithMockUser(roles = "ADMIN")
     void shouldUpdateBook() throws Exception {
-        BookRequest request = new BookRequest();
-        request.setTitle("Nowy Tytuł");
-        request.setAuthor("Nowy Autor");
-        request.setIsbn("978-83-12345-67-8");
+        BookRequest req = new BookRequest();
+        req.setTitle("Nowy Tytuł");
+        req.setAuthor("Nowy Autor");
+        req.setIsbn("978-83-12345-67-8");
 
-        Book book = new Book();
-        book.setId(10L);
-
-        when(bookRepository.findById(10L)).thenReturn(Optional.of(book));
+        Book updatedBook = new Book();
+        updatedBook.setId(10L);
+        updatedBook.setTitle("Nowy Tytuł");
+        when(bookService.updateBook(eq(10L), any(BookRequest.class))).thenReturn(updatedBook);
 
         mockMvc.perform(put("/api/v1/admin/books/10")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Nowy Tytuł"));
 
-        verify(bookRepository).save(any(Book.class));
+        verify(bookService).updateBook(eq(10L), any(BookRequest.class));
     }
 
     @Test
     @WithMockUser(roles = "ADMIN")
-    void shouldToggleBlockUser_Block() throws Exception {
-        testUser.setLocked(false);
-        when(userRepository.findById(2L)).thenReturn(Optional.of(testUser));
+    void shouldAddBook() throws Exception {
+        BookRequest req = new BookRequest();
+        req.setTitle("REST Book");
+        req.setAuthor("REST Author");
+        req.setIsbn("978-83-01-00000-1");
 
-        mockMvc.perform(put("/api/v1/admin/users/2/lock"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("zablokowany")));
+        Book savedBook = new Book();
+        savedBook.setId(1L);
+        savedBook.setTitle("REST Book");
 
-        verify(userRepository).save(argThat(User::isLocked));
-    }
+        when(bookService.createBook(any(BookRequest.class))).thenReturn(savedBook);
 
-    @Test
-    @WithMockUser(roles = "ADMIN")
-    void shouldToggleBlockUser_Unblock() throws Exception {
-        testUser.setLocked(true);
-        when(userRepository.findById(2L)).thenReturn(Optional.of(testUser));
-
-        mockMvc.perform(put("/api/v1/admin/users/2/lock"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("odblokowany")));
-
-        verify(userRepository).save(argThat(user -> !user.isLocked()));
-    }
-
-    @Test
-    @WithMockUser(roles = "ADMIN")
-    void shouldDeleteUser_NotFound() throws Exception {
-        when(userRepository.existsById(999L)).thenReturn(false);
-
-        mockMvc.perform(delete("/api/v1/admin/users/999"))
-                .andExpect(status().isNotFound());
-
-        verify(userRepository, never()).deleteById(any());
-    }
-
-    @Test
-    @WithMockUser(roles = "ADMIN")
-    void shouldDeleteUser_CannotDeleteAdmin() throws Exception {
-        when(userRepository.existsById(1L)).thenReturn(true);
-        when(userRepository.findById(1L)).thenReturn(Optional.of(adminUser));
-
-        mockMvc.perform(delete("/api/v1/admin/users/1"))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Nie można usunąć Administratora")));
-
-        verify(userRepository, never()).deleteById(any());
-    }
-
-    @Test
-    @WithMockUser(roles = "ADMIN")
-    void shouldDeleteReview_NotFound() throws Exception {
-        when(reviewRepository.existsById(999L)).thenReturn(false);
-
-        mockMvc.perform(delete("/api/v1/admin/reviews/999"))
-                .andExpect(status().isNotFound());
-
-        verify(reviewRepository, never()).deleteById(any());
-    }
-
-    @Test
-    @WithMockUser(roles = "ADMIN")
-    void shouldUpdateBook_NotFound() throws Exception {
-        BookRequest request = new BookRequest();
-        request.setTitle("Nowy Tytuł");
-        when(bookRepository.findById(999L)).thenReturn(Optional.empty());
-
-        mockMvc.perform(put("/api/v1/admin/books/999")
+        mockMvc.perform(post("/api/v1/admin/books/add")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());  // GlobalExceptionHandler zwraca 400 dla RuntimeException
-
-        verify(bookRepository, never()).save(any());
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.title").value("REST Book"));
     }
 }

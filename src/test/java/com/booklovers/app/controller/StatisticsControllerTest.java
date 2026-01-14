@@ -1,6 +1,6 @@
 package com.booklovers.app.controller;
 
-import com.booklovers.app.repository.StatisticsRepository;
+import com.booklovers.app.service.StatisticsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -23,12 +23,12 @@ class StatisticsControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private StatisticsRepository statisticsRepository;
+    private StatisticsService statisticsService;
 
     @Test
     @WithMockUser
     void shouldGetStatsCount() throws Exception {
-        when(statisticsRepository.countBooks()).thenReturn(42);
+        when(statisticsService.getBookCount()).thenReturn(42);
 
         mockMvc.perform(get("/api/v1/stats/count"))
                 .andExpect(status().isOk())
@@ -38,7 +38,7 @@ class StatisticsControllerTest {
     @Test
     @WithMockUser
     void shouldGetStatsCount_WhenZero() throws Exception {
-        when(statisticsRepository.countBooks()).thenReturn(0);
+        when(statisticsService.getBookCount()).thenReturn(0);
 
         mockMvc.perform(get("/api/v1/stats/count"))
                 .andExpect(status().isOk())

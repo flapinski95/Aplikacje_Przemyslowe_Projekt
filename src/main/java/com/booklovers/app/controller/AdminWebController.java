@@ -2,10 +2,7 @@ package com.booklovers.app.controller;
 
 import com.booklovers.app.dto.BookRequest;
 import com.booklovers.app.model.Book;
-import com.booklovers.app.model.User;
-import com.booklovers.app.repository.BookRepository;
-import com.booklovers.app.repository.ReviewRepository;
-import com.booklovers.app.repository.UserRepository;
+import com.booklovers.app.service.AdminService;
 import com.booklovers.app.service.BookService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,42 +16,51 @@ import org.springframework.web.bind.annotation.*;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminWebController {
 
-    private final UserRepository userRepository;
-    private final BookRepository bookRepository;
+    private final AdminService adminService;
     private final BookService bookService;
-    private final ReviewRepository reviewRepository;
 
-    public AdminWebController(UserRepository userRepository,
-                              BookRepository bookRepository,
-                              BookService bookService,
-                              ReviewRepository reviewRepository) {
-        this.userRepository = userRepository;
-        this.bookRepository = bookRepository;
+    public AdminWebController(AdminService adminService, BookService bookService) {
+        this.adminService = adminService;
         this.bookService = bookService;
-        this.reviewRepository = reviewRepository;
     }
 
     @GetMapping
     public String dashboard(Model model) {
-        model.addAttribute("users", userRepository.findAll());
+        model.addAttribute("users", adminService.getAllUsers());
         return "admin/dashboard";
     }
 
     @PostMapping("/users/delete/{id}")
     public String deleteUser(@PathVariable Long id) {
-        userRepository.deleteById(id);
-        return "redirect:/admin?msg=UserDeleted";
+        try {
+            adminService.deleteUser(id);
+            return "redirect:/admin?msg=UserDeleted";
+        } catch (IllegalStateException e) {
+            return "redirect:/admin?error=CannotDeleteAdmin";
+        }
     }
 
     @PostMapping("/users/promote/{id}")
     public String promoteUser(@PathVariable Long id) {
-        com.booklovers.app.model.User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        user.setRole("ADMIN");
-        userRepository.save(user);
-
+        adminService.promoteToAdmin(id);
         return "redirect:/admin?msg=UserPromoted";
+    }
+
+    @PostMapping("/users/toggle-lock/{id}")
+    public String toggleUserLock(@PathVariable Long id) {
+        try {
+            String status = adminService.toggleUserLock(id);
+            String msgCode = status.equals("zablokowany") ? "UserBlocked" : "UserUnlocked";
+            return "redirect:/admin?msg=" + msgCode;
+        } catch (IllegalStateException e) {
+            return "redirect:/admin?error=CannotBlockAdmin";
+        }
+    }
+
+    @PostMapping("/reviews/delete/{id}")
+    public String deleteReview(@PathVariable Long id, @RequestHeader(value = "Referer", required = false) String referer) {
+        adminService.deleteReview(id);
+        return "redirect:" + (referer != null ? referer : "/books");
     }
 
     @PostMapping("/books/delete/{id}")
@@ -62,31 +68,10 @@ public class AdminWebController {
         bookService.deleteBook(id);
         return "redirect:/books?msg=BookDeleted";
     }
-    @PostMapping("/users/toggle-lock/{id}")
-    public String toggleUserLock(@PathVariable Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if ("ADMIN".equals(user.getRole())) {
-            return "redirect:/admin?error=CannotBlockAdmin";
-        }
-
-        user.setLocked(!user.isLocked());
-        userRepository.save(user);
-
-        String status = user.isLocked() ? "UserBlocked" : "UserUnlocked";
-        return "redirect:/admin?msg=" + status;
-    }
-
-    @PostMapping("/reviews/delete/{id}")
-    public String deleteReview(@PathVariable Long id, @RequestHeader(value = "Referer", required = false) String referer) {
-        reviewRepository.deleteById(id);
-        return "redirect:" + (referer != null ? referer : "/books");
-    }
     @GetMapping("/books/edit/{id}")
     public String editBookForm(@PathVariable Long id, Model model) {
-        Book book = bookRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Nie znaleziono książki"));
+        Book book = bookService.getBookById(id);
 
         BookRequest request = new BookRequest();
         request.setTitle(book.getTitle());
@@ -109,17 +94,10 @@ public class AdminWebController {
             return "admin/book_edit";
         }
 
-        Book book = bookRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Nie znaleziono książki"));
-
-        book.setTitle(request.getTitle());
-        book.setAuthor(request.getAuthor());
-        book.setIsbn(request.getIsbn());
-
-        bookRepository.save(book);
-
+        bookService.updateBook(id, request);
         return "redirect:/books/" + id + "?updated=true";
     }
+
     @GetMapping("/books/add")
     public String addBookForm(Model model) {
         model.addAttribute("bookRequest", new BookRequest());
@@ -134,12 +112,7 @@ public class AdminWebController {
             return "admin/book_form";
         }
 
-        Book book = new Book();
-        book.setTitle(request.getTitle());
-        book.setAuthor(request.getAuthor());
-        book.setIsbn(request.getIsbn());
-        bookRepository.save(book);
-
+        bookService.createBook(request);
         return "redirect:/books?msg=BookAdded";
     }
 }

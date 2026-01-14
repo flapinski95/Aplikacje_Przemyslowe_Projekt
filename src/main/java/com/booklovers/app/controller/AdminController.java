@@ -2,10 +2,7 @@ package com.booklovers.app.controller;
 
 import com.booklovers.app.dto.BookRequest;
 import com.booklovers.app.model.Book;
-import com.booklovers.app.model.User;
-import com.booklovers.app.repository.BookRepository;
-import com.booklovers.app.repository.ReviewRepository;
-import com.booklovers.app.repository.UserRepository;
+import com.booklovers.app.service.AdminService;
 import com.booklovers.app.service.BookService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -16,74 +13,53 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/admin")
 public class AdminController {
 
-    private final UserRepository userRepository;
-    private final ReviewRepository reviewRepository;
+    private final AdminService adminService;
     private final BookService bookService;
-    private final BookRepository bookRepository;
 
-    public AdminController(UserRepository userRepository,
-                           ReviewRepository reviewRepository,
-                           BookService bookService,
-                           BookRepository bookRepository) {
-        this.userRepository = userRepository;
-        this.reviewRepository = reviewRepository;
+    public AdminController(AdminService adminService, BookService bookService) {
+        this.adminService = adminService;
         this.bookService = bookService;
-        this.bookRepository = bookRepository;
     }
 
     @PutMapping("/users/{userId}/lock")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> toggleBlockUser(@PathVariable Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if ("ADMIN".equals(user.getRole())) {
-            return ResponseEntity.badRequest().body("Nie można zablokować Administratora.");
+        try {
+            String status = adminService.toggleUserLock(userId);
+            return ResponseEntity.ok("Użytkownik został " + status + ".");
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
-
-        boolean newStatus = !user.isLocked();
-        user.setLocked(newStatus);
-        userRepository.save(user);
-
-        String statusMsg = newStatus ? "zablokowany" : "odblokowany";
-        return ResponseEntity.ok("Użytkownik " + user.getUsername() + " został " + statusMsg + ".");
     }
 
     @DeleteMapping("/users/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteUser(@PathVariable Long userId) {
-        if (!userRepository.existsById(userId)) {
+        try {
+            adminService.deleteUser(userId);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
-        User user = userRepository.findById(userId).get();
-        if ("ADMIN".equals(user.getRole())) {
-            return ResponseEntity.badRequest().body("Nie można usunąć Administratora.");
-        }
-
-        userRepository.deleteById(userId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @DeleteMapping("/reviews/{reviewId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteReview(@PathVariable Long reviewId) {
-        if (!reviewRepository.existsById(reviewId)) {
-            return ResponseEntity.notFound().build();
-        }
-        reviewRepository.deleteById(reviewId);
-        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/promote/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> promoteToAdmin(@PathVariable Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        user.setRole("ADMIN");
-        userRepository.save(user);
-
-        return ResponseEntity.ok("Użytkownik " + user.getUsername() + " jest teraz ADMINEM.");
+        adminService.promoteToAdmin(userId);
+        return ResponseEntity.ok("Użytkownik otrzymał uprawnienia ADMINA.");
+    }
+    @DeleteMapping("/reviews/{reviewId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteReview(@PathVariable Long reviewId) {
+        try {
+            adminService.deleteReview(reviewId);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @DeleteMapping("/books/{id}")
@@ -95,27 +71,16 @@ public class AdminController {
 
     @PutMapping("/books/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> updateBook(@PathVariable Long id,
-                                        @Valid @RequestBody BookRequest request) {
-        Book book = bookRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Książka nie istnieje"));
-
-        book.setTitle(request.getTitle());
-        book.setAuthor(request.getAuthor());
-        book.setIsbn(request.getIsbn());
-
-        bookRepository.save(book);
-
-        return ResponseEntity.ok(book);
+    public ResponseEntity<Book> updateBook(@PathVariable Long id,
+                                           @Valid @RequestBody BookRequest request) {
+        Book updatedBook = bookService.updateBook(id, request);
+        return ResponseEntity.ok(updatedBook);
     }
+
     @PostMapping("/books/add")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Book> addBook(@Valid @RequestBody BookRequest request) {
-        Book book = new Book();
-        book.setTitle(request.getTitle());
-        book.setAuthor(request.getAuthor());
-        book.setIsbn(request.getIsbn());
-        Book savedBook = bookRepository.save(book);
+        Book savedBook = bookService.createBook(request);
         return ResponseEntity.status(201).body(savedBook);
     }
 }

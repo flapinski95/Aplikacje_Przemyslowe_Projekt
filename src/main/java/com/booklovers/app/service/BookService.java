@@ -1,6 +1,7 @@
 package com.booklovers.app.service;
 
 import com.booklovers.app.dto.BookExploreDTO;
+import com.booklovers.app.dto.BookRequest;
 import com.booklovers.app.dto.BookStatsDTO;
 import com.booklovers.app.dto.ReviewRequest;
 import com.booklovers.app.model.Book;
@@ -45,8 +46,6 @@ public class BookService {
         this.statisticsRepository = statisticsRepository;
     }
 
-    // --- Pobieranie danych ---
-
     @Transactional(readOnly = true)
     public Page<Book> getAllBooks(Pageable pageable) {
         return bookRepository.findAll(pageable);
@@ -70,8 +69,6 @@ public class BookService {
         Book book = getBookById(bookId);
         return reviewRepository.existsByBookAndUser(book, user);
     }
-
-    // --- Explore & Stats ---
 
     @Transactional(readOnly = true)
     public List<BookExploreDTO> exploreBooks(String query) {
@@ -117,8 +114,6 @@ public class BookService {
         return stats;
     }
 
-    // --- Modyfikacje ---
-
     @Transactional
     public void addReview(Long bookId, String username, ReviewRequest request) {
         User user = userRepository.findByUsername(username)
@@ -153,7 +148,26 @@ public class BookService {
 
     @Transactional
     public int updateTitleRaw(Long id, String newTitle) {
-        // Wrapper na JdbcTemplate
         return statisticsRepository.updateTitleRaw(id, newTitle);
+    }
+
+    @Transactional
+    public Book createBook(BookRequest request) {
+        Book book = new Book();
+        book.setTitle(request.getTitle());
+        book.setAuthor(request.getAuthor());
+        book.setIsbn(request.getIsbn());
+        return bookRepository.save(book);
+    }
+
+    @Transactional
+    public Book updateBook(Long id, BookRequest request) {
+        Book book = bookRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Książka nie istnieje"));
+        book.setTitle(request.getTitle());
+        book.setAuthor(request.getAuthor());
+        book.setIsbn(request.getIsbn());
+
+        return bookRepository.save(book);
     }
 }

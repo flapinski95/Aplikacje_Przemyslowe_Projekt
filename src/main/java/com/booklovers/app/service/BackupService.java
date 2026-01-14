@@ -11,10 +11,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -38,7 +34,31 @@ public class BackupService {
     public String exportUserDataToCSV(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        return generateCsvContent(user);
+    }
 
+    @Transactional(readOnly = true)
+    public byte[] exportUserDataToPDF(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return generatePdfContent(user);
+    }
+
+    @Transactional(readOnly = true)
+    public String exportUserData(Long userId) throws Exception {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return generateJsonContent(user);
+    }
+
+    @Transactional
+    public void importUserData(Long userId, String json) throws Exception {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        processJsonImport(user, json);
+    }
+
+    private String generateCsvContent(User user) {
         StringBuilder csv = new StringBuilder();
         csv.append("Username,Email,FullName,Bio,Avatar,ShelfName,ShelfCode,BookIds\n");
 
@@ -47,7 +67,7 @@ public class BackupService {
                     .map(Book::getId)
                     .map(String::valueOf)
                     .collect(Collectors.joining(";"));
-            
+
             csv.append(String.format("%s,%s,%s,%s,%s,%s,%s,%s\n",
                     escapeCsv(user.getUsername()),
                     escapeCsv(user.getEmail()),
@@ -58,56 +78,23 @@ public class BackupService {
                     escapeCsv(shelf.getShelfCode()),
                     bookIds));
         }
-
         return csv.toString();
     }
 
-    private String escapeCsv(String value) {
-        if (value == null) return "";
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
-        }
-        return value;
-    }
-
-    @Transactional(readOnly = true)
-    public byte[] exportUserDataToPDF(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
+    private byte[] generatePdfContent(User user) {
         StringBuilder pdf = new StringBuilder();
         pdf.append("%PDF-1.4\n");
         pdf.append("1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\n");
         pdf.append("2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n");
         pdf.append("3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n/Contents 4 0 R\n>>\nendobj\n");
-        pdf.append("4 0 obj\n<<\n/Length ").append(pdf.length()).append("\n>>\nstream\n");
-        pdf.append("BT\n/F1 12 Tf\n100 700 Td\n(User Profile Backup) Tj\n0 -20 Td\n");
-        pdf.append("(Username: ").append(user.getUsername()).append(") Tj\n0 -20 Td\n");
-        pdf.append("(Email: ").append(user.getEmail()).append(") Tj\n0 -20 Td\n");
-        pdf.append("(Shelves: ").append(user.getShelves().size()).append(") Tj\n");
-        pdf.append("ET\nendstream\nendobj\n");
-        pdf.append("xref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000273 00000 n \n");
-        pdf.append("trailer\n<<\n/Size 5\n/Root 1 0 R\n>>\nstartxref\n").append(pdf.length()).append("\n%%EOF\n");
-
+        pdf.append("4 0 obj\n<<\n/Length 100\n>>\nstream\n");
+        pdf.append("BT\n/F1 12 Tf\n100 700 Td\n(Backup dla: ").append(user.getUsername()).append(") Tj\nET\n");
+        pdf.append("endstream\nendobj\n");
+        pdf.append("trailer\n<<\n/Root 1 0 R\n>>\n%%EOF\n");
         return pdf.toString().getBytes();
     }
 
-    public Path saveToFile(byte[] content, String filename) throws IOException {
-        Path uploadDir = Paths.get("uploads");
-        if (!Files.exists(uploadDir)) {
-            Files.createDirectories(uploadDir);
-        }
-        
-        Path filePath = uploadDir.resolve(filename);
-        Files.write(filePath, content);
-        return filePath;
-    }
-
-    @Transactional(readOnly = true)
-    public String exportUserData(Long userId) throws Exception {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
+    private String generateJsonContent(User user) throws Exception {
         BackupDTO backup = new BackupDTO();
         backup.setUsername(user.getUsername());
         backup.setEmail(user.getEmail());
@@ -124,15 +111,10 @@ public class BackupService {
         }).collect(Collectors.toList());
 
         backup.setShelves(shelfDTOs);
-
         return objectMapper.writeValueAsString(backup);
     }
 
-    @Transactional
-    public void importUserData(Long userId, String json) throws Exception {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
+    private void processJsonImport(User user, String json) throws Exception {
         BackupDTO backup = objectMapper.readValue(json, BackupDTO.class);
 
         if (backup.getBio() != null) user.setBio(backup.getBio());
@@ -141,7 +123,6 @@ public class BackupService {
 
         if (backup.getShelves() != null) {
             for (BackupDTO.ShelfBackupDTO shelfDto : backup.getShelves()) {
-
                 Shelf shelf = shelfRepository.findByShelfCodeAndUser(shelfDto.getCode(), user)
                         .orElseGet(() -> {
                             Shelf newShelf = new Shelf();
@@ -164,5 +145,13 @@ public class BackupService {
                 }
             }
         }
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 }

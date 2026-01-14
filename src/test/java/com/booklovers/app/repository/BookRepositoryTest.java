@@ -19,16 +19,13 @@ class BookRepositoryTest {
 
     @Test
     void shouldFindBooksByTitleOrAuthorOrIsbn() {
-
         bookRepository.deleteAll();
-
 
         Book b1 = new Book(null, "Wiedźmin", "Sapkowski", "11111");
         Book b2 = new Book(null, "Harry Potter", "Rowling", "22222");
         Book b3 = new Book(null, "Cyberiada", "Lem", "33333");
 
         bookRepository.saveAll(List.of(b1, b2, b3));
-
 
         List<Book> resultTitle = bookRepository.findByTitleContainingIgnoreCaseOrAuthorContainingIgnoreCaseOrIsbnContainingIgnoreCase("wiedź", "wiedź", "wiedź");
         assertEquals(1, resultTitle.size());
@@ -39,7 +36,6 @@ class BookRepositoryTest {
 
         List<Book> resultIsbn = bookRepository.findByTitleContainingIgnoreCaseOrAuthorContainingIgnoreCaseOrIsbnContainingIgnoreCase("33333", "33333", "33333");
         assertEquals(1, resultIsbn.size());
-
 
         List<Book> resultEmpty = bookRepository.findByTitleContainingIgnoreCaseOrAuthorContainingIgnoreCaseOrIsbnContainingIgnoreCase("Bzdura", "Bzdura", "Bzdura");
         assertTrue(resultEmpty.isEmpty(), "Lista powinna być pusta dla nieistniejącej frazy");

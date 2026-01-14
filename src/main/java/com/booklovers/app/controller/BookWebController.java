@@ -3,13 +3,9 @@ package com.booklovers.app.controller;
 import com.booklovers.app.dto.ReviewRequest;
 import com.booklovers.app.model.Book;
 import com.booklovers.app.model.Review;
-import com.booklovers.app.model.Shelf; // <--- Import
-import com.booklovers.app.model.User;
-import com.booklovers.app.repository.BookRepository;
-import com.booklovers.app.repository.ReviewRepository;
-import com.booklovers.app.repository.UserRepository;
+import com.booklovers.app.model.Shelf;
 import com.booklovers.app.service.BookService;
-import com.booklovers.app.service.ShelfService; // <--- Import
+import com.booklovers.app.service.ShelfService;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,28 +14,18 @@ import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.TreeMap;
 
 @Controller
 @RequestMapping("/books")
 public class BookWebController {
 
     private final BookService bookService;
-    private final BookRepository bookRepository;
-    private final ReviewRepository reviewRepository;
-    private final UserRepository userRepository;
     private final ShelfService shelfService;
 
-    public BookWebController(BookService bookService,
-                             BookRepository bookRepository,
-                             ReviewRepository reviewRepository,
-                             UserRepository userRepository,
-                             ShelfService shelfService) {
+    public BookWebController(BookService bookService, ShelfService shelfService) {
         this.bookService = bookService;
-        this.bookRepository = bookRepository;
-        this.reviewRepository = reviewRepository;
-        this.userRepository = userRepository;
         this.shelfService = shelfService;
     }
 
@@ -53,40 +39,28 @@ public class BookWebController {
     @GetMapping("/{id}")
     public String getBookDetails(@PathVariable Long id, Model model,
                                  @AuthenticationPrincipal UserDetails currentUser) {
-        Book book = bookRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Książka nie istnieje"));
 
-        List<Review> reviews = reviewRepository.findByBookId(id);
+        Book book = bookService.getBookById(id);
+        List<Review> reviews = bookService.getReviewsForBook(id);
 
-        double averageRating = reviews.stream()
-                .mapToInt(Review::getRating)
-                .average()
-                .orElse(0.0);
+        double averageRating = reviews.stream().mapToInt(Review::getRating).average().orElse(0.0);
 
-        java.util.Map<Integer, Long> ratingDistribution = new java.util.TreeMap<>(java.util.Collections.reverseOrder());
-        for (int i = 10; i >= 1; i--) {
-            ratingDistribution.put(i, 0L);
-        }
-
-        for (Review r : reviews) {
-            ratingDistribution.put(r.getRating(), ratingDistribution.get(r.getRating()) + 1);
-        }
+        var ratingDistribution = new TreeMap<Integer, Long>(java.util.Collections.reverseOrder());
+        for (int i = 10; i >= 1; i--) ratingDistribution.put(i, 0L);
+        for (Review r : reviews) ratingDistribution.put(r.getRating(), ratingDistribution.get(r.getRating()) + 1);
 
         model.addAttribute("book", book);
         model.addAttribute("reviews", reviews);
         model.addAttribute("averageRating", String.format("%.1f", averageRating));
         model.addAttribute("totalReviews", reviews.size());
         model.addAttribute("ratingDistribution", ratingDistribution);
-
         model.addAttribute("reviewRequest", new ReviewRequest());
 
         if (currentUser != null) {
-            User user = userRepository.findByUsername(currentUser.getUsername()).orElseThrow();
-            List<Shelf> userShelves = shelfService.getAllShelvesForUser(user.getUsername());
+            List<Shelf> userShelves = shelfService.getAllShelvesForUser(currentUser.getUsername());
             model.addAttribute("userShelves", userShelves);
 
-            boolean alreadyReviewed = reviewRepository.existsByBookAndUser(book, user);
-            if(alreadyReviewed) {
+            if(bookService.hasUserReviewedBook(id, currentUser.getUsername())) {
                 model.addAttribute("userHasReviewed", true);
             }
         }
@@ -101,36 +75,29 @@ public class BookWebController {
                             @AuthenticationPrincipal UserDetails currentUser,
                             Model model) {
 
-        Book book = bookRepository.findById(id).orElseThrow();
-
         if (result.hasErrors()) {
-            model.addAttribute("book", book);
-            model.addAttribute("reviews", reviewRepository.findByBookId(id));
-            if (currentUser != null) {
-                model.addAttribute("userShelves", shelfService.getAllShelvesForUser(currentUser.getUsername()));
-            }
-            return "books/details";
+            return prepareErrorView(id, currentUser, model);
         }
 
-        User user = userRepository.findByUsername(currentUser.getUsername()).orElseThrow();
+        try {
+            bookService.addReview(id, currentUser.getUsername(), reviewRequest);
+            return "redirect:/books/" + id + "?reviewAdded=true";
 
-        if (reviewRepository.existsByBookAndUser(book, user)) {
-            model.addAttribute("duplicateError", "Już oceniłeś tę książkę!");
-            model.addAttribute("book", book);
-            model.addAttribute("reviews", reviewRepository.findByBookId(id));
+        } catch (IllegalStateException e) {
+            model.addAttribute("duplicateError", e.getMessage());
+            return prepareErrorView(id, currentUser, model);
+        }
+    }
+
+    private String prepareErrorView(Long bookId, UserDetails currentUser, Model model) {
+        Book book = bookService.getBookById(bookId);
+        List<Review> reviews = bookService.getReviewsForBook(bookId);
+
+        model.addAttribute("book", book);
+        model.addAttribute("reviews", reviews);
+        if (currentUser != null) {
             model.addAttribute("userShelves", shelfService.getAllShelvesForUser(currentUser.getUsername()));
-            return "books/details";
         }
-
-        Review review = new Review();
-        review.setBook(book);
-        review.setUser(user);
-        review.setRating(reviewRequest.getRating());
-        review.setContent(reviewRequest.getContent());
-        review.setCreatedAt(LocalDateTime.now());
-
-        reviewRepository.save(review);
-
-        return "redirect:/books/" + id + "?reviewAdded=true";
+        return "books/details";
     }
 }
