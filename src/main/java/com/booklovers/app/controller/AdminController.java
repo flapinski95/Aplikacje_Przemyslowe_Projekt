@@ -13,7 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/admin")
+@RequestMapping("/api/v1/admin")
 public class AdminController {
 
     private final UserRepository userRepository;
@@ -51,7 +51,7 @@ public class AdminController {
 
     @DeleteMapping("/users/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<String> deleteUser(@PathVariable Long userId) {
+    public ResponseEntity<?> deleteUser(@PathVariable Long userId) {
         if (!userRepository.existsById(userId)) {
             return ResponseEntity.notFound().build();
         }
@@ -61,17 +61,17 @@ public class AdminController {
         }
 
         userRepository.deleteById(userId);
-        return ResponseEntity.ok("Użytkownik został usunięty.");
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/reviews/{reviewId}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<String> deleteReview(@PathVariable Long reviewId) {
+    public ResponseEntity<Void> deleteReview(@PathVariable Long reviewId) {
         if (!reviewRepository.existsById(reviewId)) {
             return ResponseEntity.notFound().build();
         }
         reviewRepository.deleteById(reviewId);
-        return ResponseEntity.ok("Recenzja została usunięta przez moderatora.");
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/promote/{userId}")
@@ -88,9 +88,9 @@ public class AdminController {
 
     @DeleteMapping("/books/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<String> deleteBook(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
         bookService.deleteBook(id);
-        return ResponseEntity.ok("Książka została usunięta.");
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/books/{id}")
@@ -109,11 +109,13 @@ public class AdminController {
         return ResponseEntity.ok(book);
     }
     @PostMapping("/books/add")
-    public Book addBook(@Valid @RequestBody BookRequest request) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Book> addBook(@Valid @RequestBody BookRequest request) {
         Book book = new Book();
         book.setTitle(request.getTitle());
         book.setAuthor(request.getAuthor());
         book.setIsbn(request.getIsbn());
-        return bookRepository.save(book);
+        Book savedBook = bookRepository.save(book);
+        return ResponseEntity.status(201).body(savedBook);
     }
 }

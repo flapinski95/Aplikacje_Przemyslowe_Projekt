@@ -4,7 +4,7 @@ import com.booklovers.app.repository.StatisticsRepository;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/stats")
+@RequestMapping("/api/v1/stats")
 public class StatisticsController {
 
     private final StatisticsRepository statisticsRepository;

@@ -33,7 +33,7 @@ class ReviewControllerTest {
     void shouldGetReviewsForBook_Publicly() throws Exception {
         when(reviewService.getReviewsForBook(1L)).thenReturn(Collections.emptyList());
 
-        mockMvc.perform(get("/api/reviews/book/1"))
+        mockMvc.perform(get("/api/v1/reviews/book/1"))
                 .andExpect(status().isOk());
     }
 
@@ -45,9 +45,9 @@ class ReviewControllerTest {
         req.setRating(5);
         req.setContent("Ok");
 
-        mockMvc.perform(post("/api/reviews")
+        mockMvc.perform(post("/api/v1/reviews")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isOk());
+                .andExpect(status().isCreated());
     }
 }

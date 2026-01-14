@@ -7,7 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 public class AuthController {
 
     private final AuthService authService;
@@ -20,7 +20,7 @@ public class AuthController {
     public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
         try {
             authService.registerUser(request);
-            return ResponseEntity.ok("Rejestracja udana! Możesz się zalogować.");
+            return ResponseEntity.status(201).body("Rejestracja udana! Możesz się zalogować.");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

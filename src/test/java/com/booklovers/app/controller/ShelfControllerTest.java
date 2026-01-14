@@ -39,14 +39,14 @@ class ShelfControllerTest {
 
         when(shelfService.getAllShelvesForUser("janek")).thenReturn(List.of(shelf));
 
-        mockMvc.perform(get("/api/shelves"))
+        mockMvc.perform(get("/api/v1/shelves"))
                 .andExpect(status().isOk());
     }
 
     @Test
     @WithMockUser(username = "janek")
     void shouldAddBookToShelf() throws Exception {
-        mockMvc.perform(post("/api/shelves/code/READ/books/1"))
+        mockMvc.perform(post("/api/v1/shelves/code/READ/books/1"))
                 .andExpect(status().isOk());
 
         verify(shelfService).addBookToShelfByCode("janek", "READ", 1L);
@@ -56,7 +56,7 @@ class ShelfControllerTest {
     void shouldAllowPublicAccessToExplore() throws Exception {
         when(shelfService.getExplorePage()).thenReturn(Collections.emptyList());
 
-        mockMvc.perform(get("/api/shelves/explore"))
+        mockMvc.perform(get("/api/v1/shelves/explore"))
                 .andExpect(status().isOk());
     }
 }

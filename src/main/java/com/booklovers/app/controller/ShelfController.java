@@ -8,7 +8,7 @@ import java.security.Principal;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/shelves")
+@RequestMapping("/api/v1/shelves")
 public class ShelfController {
 
     private final ShelfService shelfService;

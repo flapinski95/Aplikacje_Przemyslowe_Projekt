@@ -11,7 +11,7 @@ import java.security.Principal;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/reviews")
+@RequestMapping("/api/v1/reviews")
 public class ReviewController {
 
     private final ReviewService reviewService;
@@ -23,7 +23,7 @@ public class ReviewController {
     @PostMapping
     public ResponseEntity<String> addReview(@Valid @RequestBody ReviewRequest request, Principal principal) {
         reviewService.addReview(principal.getName(), request);
-        return ResponseEntity.ok("Recenzja dodana!");
+        return ResponseEntity.status(201).body("Recenzja dodana!");
     }
 
     @GetMapping("/book/{bookId}")

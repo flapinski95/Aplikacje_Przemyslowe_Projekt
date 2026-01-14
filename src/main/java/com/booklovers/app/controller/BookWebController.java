@@ -52,7 +52,7 @@ public class BookWebController {
 
     @GetMapping("/{id}")
     public String getBookDetails(@PathVariable Long id, Model model,
-                                 @AuthenticationPrincipal UserDetails userDetails) {
+                                 @AuthenticationPrincipal UserDetails currentUser) {
         Book book = bookRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Książka nie istnieje"));
 
@@ -80,8 +80,8 @@ public class BookWebController {
 
         model.addAttribute("reviewRequest", new ReviewRequest());
 
-        if (userDetails != null) {
-            User user = userRepository.findByUsername(userDetails.getUsername()).orElseThrow();
+        if (currentUser != null) {
+            User user = userRepository.findByUsername(currentUser.getUsername()).orElseThrow();
             List<Shelf> userShelves = shelfService.getAllShelvesForUser(user.getUsername());
             model.addAttribute("userShelves", userShelves);
 
@@ -98,7 +98,7 @@ public class BookWebController {
     public String addReview(@PathVariable Long id,
                             @Valid @ModelAttribute("reviewRequest") ReviewRequest reviewRequest,
                             BindingResult result,
-                            @AuthenticationPrincipal UserDetails userDetails,
+                            @AuthenticationPrincipal UserDetails currentUser,
                             Model model) {
 
         Book book = bookRepository.findById(id).orElseThrow();
@@ -106,19 +106,19 @@ public class BookWebController {
         if (result.hasErrors()) {
             model.addAttribute("book", book);
             model.addAttribute("reviews", reviewRepository.findByBookId(id));
-            if (userDetails != null) {
-                model.addAttribute("userShelves", shelfService.getAllShelvesForUser(userDetails.getUsername()));
+            if (currentUser != null) {
+                model.addAttribute("userShelves", shelfService.getAllShelvesForUser(currentUser.getUsername()));
             }
             return "books/details";
         }
 
-        User user = userRepository.findByUsername(userDetails.getUsername()).orElseThrow();
+        User user = userRepository.findByUsername(currentUser.getUsername()).orElseThrow();
 
         if (reviewRepository.existsByBookAndUser(book, user)) {
             model.addAttribute("duplicateError", "Już oceniłeś tę książkę!");
             model.addAttribute("book", book);
             model.addAttribute("reviews", reviewRepository.findByBookId(id));
-            model.addAttribute("userShelves", shelfService.getAllShelvesForUser(userDetails.getUsername()));
+            model.addAttribute("userShelves", shelfService.getAllShelvesForUser(currentUser.getUsername()));
             return "books/details";
         }
 

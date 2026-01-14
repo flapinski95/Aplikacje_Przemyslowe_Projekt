@@ -15,6 +15,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -95,6 +98,42 @@ public class UserWebController {
         user.setAvatar(profileDto.getAvatar());
         userRepository.save(user);
         return "redirect:/profile?success";
+    }
+
+    @GetMapping("/profile/export")
+    public ResponseEntity<String> exportProfile(@AuthenticationPrincipal UserDetails userDetails,
+                                                 @RequestParam(defaultValue = "json") String format) {
+        try {
+            User user = userRepository.findByUsername(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("Nie znaleziono użytkownika"));
+
+            String content;
+            String filename;
+            MediaType mediaType;
+
+            if ("csv".equalsIgnoreCase(format)) {
+                content = backupService.exportUserDataToCSV(user.getId());
+                filename = "user_backup.csv";
+                mediaType = MediaType.TEXT_PLAIN;
+            } else if ("pdf".equalsIgnoreCase(format)) {
+                byte[] pdfContent = backupService.exportUserDataToPDF(user.getId());
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"user_backup.pdf\"")
+                        .contentType(MediaType.APPLICATION_PDF)
+                        .body(new String(pdfContent, StandardCharsets.ISO_8859_1));
+            } else {
+                content = backupService.exportUserData(user.getId());
+                filename = "user_backup.json";
+                mediaType = MediaType.APPLICATION_JSON;
+            }
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .contentType(mediaType)
+                    .body(content);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Błąd eksportu: " + e.getMessage());
+        }
     }
 
     @PostMapping("/profile/import")

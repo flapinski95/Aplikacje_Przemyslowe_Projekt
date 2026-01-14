@@ -26,6 +26,7 @@ class ShelfRepositoryTest {
         User user = new User();
         user.setUsername("test_user");
         user.setPassword("pass");
+        user.setEmail("test@example.com");
         user.setRole("USER");
         userRepository.save(user);
 
@@ -46,6 +47,7 @@ class ShelfRepositoryTest {
         User user = new User();
         user.setUsername("test_user");
         user.setPassword("pass");
+        user.setEmail("test2@example.com");
         userRepository.save(user);
 
         Optional<Shelf> foundShelf = shelfRepository.findByShelfCodeAndUser("NIEISTNIEJACY_KOD", user);

@@ -53,6 +53,7 @@ public class ShelfService {
         return shelfRepository.save(shelf);
     }
 
+    @Transactional(readOnly = true)
     public List<Shelf> getAllShelvesForUser(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Nie znaleziono użytkownika"));
@@ -95,6 +96,7 @@ public class ShelfService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<ExploreDTO> getExplorePage() {
         List<User> allUsers = userRepository.findAll();
         log.info("Generowanie strony Explore (feed społecznościowy)");

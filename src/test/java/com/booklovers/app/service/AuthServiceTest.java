@@ -50,10 +50,44 @@ class AuthServiceTest {
     void shouldThrowException_WhenUsernameIsTaken() {
         RegisterRequest request = new RegisterRequest();
         request.setUsername("existingUser");
+        request.setEmail("test@example.com");
 
         when(userRepository.findByUsername("existingUser")).thenReturn(Optional.of(new User()));
 
         assertThrows(RuntimeException.class, () -> authService.registerUser(request));
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldThrowException_WhenEmailIsTaken() {
+        RegisterRequest request = new RegisterRequest();
+        request.setUsername("newUser");
+        request.setPassword("password123");
+        request.setEmail("existing@example.com");
+
+        when(userRepository.findByUsername("newUser")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("existing@example.com")).thenReturn(Optional.of(new User()));
+
+        assertThrows(RuntimeException.class, () -> authService.registerUser(request));
+        verify(userRepository, never()).save(any());
+        verify(shelfService, never()).createDefaultShelves(any());
+    }
+
+    @Test
+    void shouldRegisterUser_WithFullData() {
+        RegisterRequest request = new RegisterRequest();
+        request.setUsername("newUser");
+        request.setPassword("password123");
+        request.setEmail("newuser@example.com");
+        request.setFullName("New User");
+
+        when(userRepository.findByUsername("newUser")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("newuser@example.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("password123")).thenReturn("encoded_pass");
+
+        authService.registerUser(request);
+
+        verify(userRepository, times(1)).save(any(User.class));
+        verify(shelfService, times(1)).createDefaultShelves(any(User.class));
     }
 }

@@ -66,6 +66,7 @@ class BookWebControllerTest {
 
         User user = new User();
         user.setUsername("janek");
+        user.setEmail("janek@example.com");
 
         when(bookRepository.findById(1L)).thenReturn(Optional.of(book));
         when(reviewRepository.findByBookId(1L)).thenReturn(Collections.emptyList());
@@ -93,8 +94,14 @@ class BookWebControllerTest {
     @Test
     @WithMockUser(username = "janek")
     void shouldFailWhenReviewIsInvalid() throws Exception {
-        when(bookRepository.findById(1L)).thenReturn(Optional.of(new Book()));
-        when(userRepository.findByUsername("janek")).thenReturn(Optional.of(new User()));
+        Book book = new Book();
+        book.setId(1L);
+        User user = new User();
+        user.setUsername("janek");
+        user.setEmail("janek@example.com");
+        
+        when(bookRepository.findById(1L)).thenReturn(Optional.of(book));
+        when(userRepository.findByUsername("janek")).thenReturn(Optional.of(user));
         when(shelfService.getAllShelvesForUser("janek")).thenReturn(new ArrayList<>());
         when(reviewRepository.findByBookId(1L)).thenReturn(Collections.emptyList());
 

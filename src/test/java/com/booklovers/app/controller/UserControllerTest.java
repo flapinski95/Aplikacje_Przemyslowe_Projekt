@@ -56,7 +56,7 @@ class UserControllerTest {
         when(shelfService.getAllShelvesForUser("testuser")).thenReturn(new ArrayList<>());
         when(reviewRepository.countByUser(user)).thenReturn(5);
 
-        mockMvc.perform(get("/api/users/me"))
+        mockMvc.perform(get("/api/v1/users/me"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("testuser"));
     }
@@ -70,7 +70,7 @@ class UserControllerTest {
         dto.setBio("New Cool Bio");
         dto.setAvatar("http://avatar.com/img.png");
 
-        mockMvc.perform(put("/api/users/me")
+        mockMvc.perform(put("/api/v1/users/me")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isOk())
@@ -86,8 +86,8 @@ class UserControllerTest {
     void shouldUpdateReadingGoal() throws Exception {
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(user));
 
-        mockMvc.perform(put("/api/users/me/goal")
-                        .param("newGoal", "100"))
+        mockMvc.perform(put("/api/v1/users/me/goal")
+                .param("newGoal", "100"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("100")));
 
@@ -99,9 +99,8 @@ class UserControllerTest {
     void shouldDeleteAccount() throws Exception {
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(user));
 
-        mockMvc.perform(delete("/api/users/me"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Konto zostało usunięte. Twoje recenzje zostały zanonimizowane.")));
+        mockMvc.perform(delete("/api/v1/users/me"))
+                .andExpect(status().isNoContent());
 
         verify(userRepository).delete(user);
     }

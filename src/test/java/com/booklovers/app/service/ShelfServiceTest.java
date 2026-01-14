@@ -42,6 +42,7 @@ class ShelfServiceTest {
 
         User user = new User();
         user.setUsername(username);
+        user.setEmail("janek@example.com");
 
         Shelf shelf = new Shelf();
         shelf.setShelfCode(shelfCode);
@@ -78,6 +79,7 @@ class ShelfServiceTest {
     void shouldNotAddDuplicateBook() {
         String username = "janek";
         User user = new User();
+        user.setEmail("janek@example.com");
 
         Book book = new Book();
         book.setId(1L);
@@ -99,6 +101,7 @@ class ShelfServiceTest {
         String username = "janek";
         User user = new User();
         user.setUsername(username);
+        user.setEmail("janek@example.com");
 
         Shelf shelf = new Shelf();
         shelf.setName("Test Shelf");
@@ -116,6 +119,7 @@ class ShelfServiceTest {
     void shouldReturnExplorePageWithCorrectMapping() {
         User user = new User();
         user.setUsername("explorer");
+        user.setEmail("explorer@example.com");
 
         Shelf shelf = new Shelf();
         shelf.setName("Favs");
@@ -139,5 +143,123 @@ class ShelfServiceTest {
         assertEquals(1, dto.getShelves().size());
         assertEquals("Favs", dto.getShelves().get(0).getShelfName());
         assertEquals("Java Guide", dto.getShelves().get(0).getBooks().get(0).getTitle());
+    }
+
+    @Test
+    void shouldCreateCustomShelf() {
+        String username = "janek";
+        User user = new User();
+        user.setUsername(username);
+        user.setEmail("janek@example.com");
+
+        Shelf createdShelf = new Shelf();
+        createdShelf.setName("Custom Shelf");
+        createdShelf.setShelfCode("CUSTOM_SHELF_123");
+
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
+        when(shelfRepository.save(any(Shelf.class))).thenAnswer(invocation -> {
+            Shelf shelf = invocation.getArgument(0);
+            shelf.setId(1L);
+            return shelf;
+        });
+
+        Shelf result = shelfService.createCustomShelf(username, "Custom Shelf");
+
+        assertNotNull(result);
+        verify(shelfRepository).save(any(Shelf.class));
+    }
+
+    @Test
+    void shouldDeleteShelf_WhenUserIsOwner() {
+        String username = "janek";
+        User user = new User();
+        user.setId(1L);
+        user.setUsername(username);
+        user.setEmail("janek@example.com");
+
+        Shelf shelf = new Shelf();
+        shelf.setId(1L);
+        shelf.setName("Custom Shelf");
+        shelf.setShelfCode("CUSTOM_SHELF");
+        shelf.setUser(user);
+
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
+        when(shelfRepository.findById(1L)).thenReturn(Optional.of(shelf));
+
+        shelfService.deleteShelf(1L, username);
+
+        verify(shelfRepository).delete(shelf);
+    }
+
+    @Test
+    void shouldNotDeleteShelf_WhenUserIsNotOwner() {
+        String username = "janek";
+        User owner = new User();
+        owner.setId(1L);
+        owner.setEmail("owner@example.com");
+
+        User user = new User();
+        user.setId(2L);
+        user.setUsername(username);
+        user.setEmail("janek@example.com");
+
+        Shelf shelf = new Shelf();
+        shelf.setId(1L);
+        shelf.setUser(owner);
+
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
+        when(shelfRepository.findById(1L)).thenReturn(Optional.of(shelf));
+
+        assertThrows(RuntimeException.class, () -> {
+            shelfService.deleteShelf(1L, username);
+        });
+
+        verify(shelfRepository, never()).delete(any());
+    }
+
+    @Test
+    void shouldNotDeleteShelf_WhenSystemShelf() {
+        String username = "janek";
+        User user = new User();
+        user.setId(1L);
+        user.setUsername(username);
+        user.setEmail("janek@example.com");
+
+        Shelf shelf = new Shelf();
+        shelf.setId(1L);
+        shelf.setShelfCode("READ");
+        shelf.setUser(user);
+
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
+        when(shelfRepository.findById(1L)).thenReturn(Optional.of(shelf));
+
+        shelfService.deleteShelf(1L, username);
+
+        verify(shelfRepository, never()).delete(any());
+    }
+
+    @Test
+    void shouldRemoveBookFromShelves() {
+        String username = "janek";
+        User user = new User();
+        user.setUsername(username);
+        user.setEmail("janek@example.com");
+
+        Book book = new Book();
+        book.setId(1L);
+
+        Shelf shelf1 = new Shelf();
+        shelf1.setBooks(new java.util.ArrayList<>(List.of(book)));
+        Shelf shelf2 = new Shelf();
+        shelf2.setBooks(new java.util.ArrayList<>());
+
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
+        when(bookRepository.findById(1L)).thenReturn(Optional.of(book));
+        when(shelfRepository.findAllByUser(user)).thenReturn(List.of(shelf1, shelf2));
+
+        shelfService.removeBookFromShelves(username, 1L);
+
+        verify(shelfRepository).save(shelf1);
+        assertFalse(shelf1.getBooks().contains(book));
     }
 }

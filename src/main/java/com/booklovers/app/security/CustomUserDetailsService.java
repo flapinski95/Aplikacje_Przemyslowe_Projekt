@@ -31,10 +31,15 @@ public class CustomUserDetailsService implements UserDetailsService {
         log.info("Pomyślnie załadowano dane użytkownika: {} (Rola: {}, Zablokowany: {})",
                 username, user.getRole(), user.isLocked());
 
+        String role = user.getRole();
+        if (role != null && !role.startsWith("ROLE_")) {
+            role = "ROLE_" + role;
+        }
+
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getUsername())
                 .password(user.getPassword())
-                .roles(user.getRole())
+                .authorities(role != null ? role : "ROLE_USER")
                 .accountLocked(user.isLocked())
                 .build();
     }

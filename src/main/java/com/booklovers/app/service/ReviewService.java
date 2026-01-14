@@ -53,6 +53,7 @@ public class ReviewService {
         log.info("Recenzja dodana pomyślnie. Ocena: {}", request.getRating());
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<Review> getReviewsForBook(Long bookId) {
         log.debug("Pobieranie recenzji dla książki ID: {}", bookId);
         return reviewRepository.findByBookId(bookId);

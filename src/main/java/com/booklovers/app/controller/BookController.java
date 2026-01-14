@@ -1,20 +1,21 @@
 package com.booklovers.app.controller;
 
 import com.booklovers.app.dto.BookExploreDTO;
-import com.booklovers.app.dto.BookRequest;
 import com.booklovers.app.dto.BookStatsDTO;
 import com.booklovers.app.model.Book;
 import com.booklovers.app.repository.BookRepository;
 import com.booklovers.app.repository.StatisticsRepository;
 import com.booklovers.app.service.BookService;
-import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/books")
+@RequestMapping("/api/v1/books")
 public class BookController {
 
     private final BookRepository bookRepository;
@@ -30,8 +31,9 @@ public class BookController {
     }
 
     @GetMapping
-    public List<Book> getAllBooks() {
-        return bookRepository.findAll();
+    public ResponseEntity<Page<Book>> getAllBooks(@PageableDefault(size = 20) Pageable pageable) {
+        Page<Book> books = bookRepository.findAll(pageable);
+        return ResponseEntity.ok(books);
     }
 
 

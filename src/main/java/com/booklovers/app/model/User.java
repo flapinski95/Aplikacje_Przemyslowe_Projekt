@@ -3,6 +3,7 @@ package com.booklovers.app.model;
 import jakarta.persistence.*;
 import lombok.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -26,7 +27,7 @@ public class User {
     @Column(nullable = false)
     private Integer readingGoal = 50;
 
-
+    @Column(unique = true, nullable = false)
     private String email;
     private String fullName;
     private String bio;
@@ -35,12 +36,12 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     @ToString.Exclude
-    private List<Shelf> shelves;
+    private List<Shelf> shelves = new ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JsonIgnore
     @ToString.Exclude
-    private List<Review> reviews;
+    private List<Review> reviews = new ArrayList<>();
     @Column(nullable = false)
     private boolean locked = false;
     public boolean isLocked() {

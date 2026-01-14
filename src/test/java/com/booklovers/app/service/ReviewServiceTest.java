@@ -39,6 +39,7 @@ class ReviewServiceTest {
         req.setRating(5);
 
         User user = new User();
+        user.setEmail("user1@example.com");
         Book book = new Book();
         book.setId(1L);
 
@@ -58,6 +59,7 @@ class ReviewServiceTest {
         req.setBookId(1L);
 
         User user = new User();
+        user.setEmail("user1@example.com");
         Book book = new Book();
 
         when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));

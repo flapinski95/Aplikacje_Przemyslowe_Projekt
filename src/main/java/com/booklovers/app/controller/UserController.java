@@ -15,7 +15,7 @@ import java.security.Principal;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/v1/users")
 public class UserController {
 
     private final UserRepository userRepository;
@@ -82,7 +82,7 @@ public class UserController {
 
     @DeleteMapping("/me")
     @Transactional
-    public ResponseEntity<String> deleteAccount(Principal principal) {
+    public ResponseEntity<Void> deleteAccount(Principal principal) {
         User user = userRepository.findByUsername(principal.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -94,6 +94,6 @@ public class UserController {
 
         userRepository.delete(user);
 
-        return ResponseEntity.ok("Konto zostało usunięte. Twoje recenzje zostały zanonimizowane.");
+        return ResponseEntity.noContent().build();
     }
 }

@@ -52,6 +52,7 @@ class UserWebControllerTest {
         user = new User();
         user.setId(1L);
         user.setUsername("janek");
+        user.setEmail("janek@example.com");
         user.setRole("USER");
         when(userRepository.findByUsername("janek")).thenReturn(Optional.of(user));
     }
